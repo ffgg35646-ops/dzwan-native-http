@@ -15,6 +15,10 @@
     "src/**/*.cts"
   ],
   "exclude": [
-    "src/scripts/**/*.ts"
+    "src/scripts/**/*.ts",
+    "src/**/*.before-*",
+    "src/**/*.bak*",
+    "src/**/*.backup*",
+    "src/**/*.orig*"
   ]
 }
