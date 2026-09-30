@@ -1,0 +1,29 @@
+import { Router } from "../http/express-compat.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import {
+  loadUserScope,
+  requireProductManagementRole,
+} from "../middleware/scope.middleware.js";
+import {
+  createProduct,
+  deleteProduct,
+  getProduct,
+  listProducts,
+  updateProduct,
+} from "../controllers/product.controller.js";
+
+const router = Router();
+
+router.use(
+  requireAuth,
+  loadUserScope,
+  requireProductManagementRole,
+);
+
+router.get("/", listProducts);
+router.post("/", createProduct);
+router.get("/:id", getProduct);
+router.patch("/:id", updateProduct);
+router.delete("/:id", deleteProduct);
+
+export default router;

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "admin": {
+      "root": "admin/",
+      "framework": "vite"
+    },
+    "backend": {
+      "root": "backend/",
+      "framework": "node",
+      "installCommand": "npm install",
+      "buildCommand": "npm run build",
+      "entrypoint": "src/server.mts"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "admin"
+      }
+    }
+  ]
+}
