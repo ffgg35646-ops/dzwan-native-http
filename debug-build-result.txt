@@ -1,7 +1,0 @@
-BUILD_EXIT_CODE=2
-
-> backend@1.0.0 build
-> tsc
-
-src/http/native-upload.middleware.ts(50,16): error TS2351: This expression is not constructable.
-  Type 'typeof import("/home/runner/work/dzwan-native-http/dzwan-native-http/backend/node_modules/@fastify/busboy/types/index")' has no construct signatures.
