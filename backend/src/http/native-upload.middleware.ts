@@ -47,7 +47,7 @@ export function multipartUpload(options:UploadOptions):Handler {
     const fields:Record<string,string>={};
 
     let bb:any;
-    try{bb=Busboy({headers:req.headers,limits:{fileSize:maxSize,files:maxFiles}});}
+    try{bb=new Busboy({headers:req.headers,limits:{fileSize:maxSize,files:maxFiles}});}
     catch(error){next(error);return;}
 
     bb.on("field",(name:string,value:string)=>{fields[name]=value;});
