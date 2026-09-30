@@ -325,7 +325,7 @@ export async function requireAdmin(
   }
 
   const permission = resolveAdminPermission(
-    req.method,
+    String(req.method ?? ""),
     req.originalUrl,
   );
 
@@ -428,7 +428,7 @@ export async function requireAdmin(
     }
   }
 
-  const method = req.method.toUpperCase();
+  const method = String(req.method ?? "").toUpperCase();
 
   // نسجل فقط العمليات التي تغيّر بيانات النظام.
   const shouldAudit =
