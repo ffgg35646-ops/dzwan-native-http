@@ -1,0 +1,57 @@
+BUILD_EXIT_CODE=2
+
+> backend@1.0.0 build
+> tsc
+
+src/http/native-upload.middleware.ts(50,12): error TS2349: This expression is not callable.
+  Type 'typeof import("/home/runner/work/dzwan-native-http/dzwan-native-http/backend/node_modules/@fastify/busboy/types/index")' has no call signatures.
+src/middleware/auth.middleware.ts(328,5): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/middleware/auth.middleware.ts(431,18): error TS18048: 'req.method' is possibly 'undefined'.
+src/middleware/scope.middleware.ts(377,7): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/establishment-report.routes.ts.before-r24-shop-full.ts(9,3): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<Record<string, string>, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthenticatedRequest'.
+            Types of property 'ip' are incompatible.
+              Type 'string | undefined' is not assignable to type 'string'.
+                Type 'undefined' is not assignable to type 'string'.
+src/routes/requirements-11-29.routes.ts.before-r26-admin-route.ts(93,3): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<Record<string, string>, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthenticatedRequest'.
+            Types of property 'ip' are incompatible.
+              Type 'string | undefined' is not assignable to type 'string'.
+                Type 'undefined' is not assignable to type 'string'.
+src/routes/requirements-11-29.routes.ts.before-r26-admin-route.ts(99,3): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<Record<string, string>, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthenticatedRequest'.
+            Types of property 'ip' are incompatible.
+              Type 'string | undefined' is not assignable to type 'string'.
+                Type 'undefined' is not assignable to type 'string'.
+src/routes/requirements-11-29.routes.ts.before-r26-admin-route.ts(105,3): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<Record<string, string>, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthenticatedRequest'.
+            Types of property 'ip' are incompatible.
+              Type 'string | undefined' is not assignable to type 'string'.
+                Type 'undefined' is not assignable to type 'string'.
+src/routes/requirements-11-29.routes.ts.before-r26-admin-route.ts(111,3): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthenticatedRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<Record<string, string>, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<Record<string, string>, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthenticatedRequest'.
+            Types of property 'ip' are incompatible.
+              Type 'string | undefined' is not assignable to type 'string'.
+                Type 'undefined' is not assignable to type 'string'.
