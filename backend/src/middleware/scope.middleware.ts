@@ -374,7 +374,7 @@ export async function requireManagementRole(
 
   const requiredPermission =
     getManagementPermission(
-      req.method,
+      String(req.method ?? ""),
       req.originalUrl,
     );
 
