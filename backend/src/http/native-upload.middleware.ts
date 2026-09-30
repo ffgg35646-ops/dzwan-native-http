@@ -1,4 +1,4 @@
-import Busboy from "@fastify/busboy";
+import { Busboy } from "@fastify/busboy";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -47,13 +47,12 @@ export function multipartUpload(options:UploadOptions):Handler {
     const fields:Record<string,string>={};
 
     let bb:any;
-    try{bb=new Busboy({headers:req.headers,limits:{fileSize:maxSize,files:maxFiles}});}
+    try{bb=Busboy({headers:req.headers,limits:{fileSize:maxSize,files:maxFiles}});}
     catch(error){next(error);return;}
 
     bb.on("field",(name:string,value:string)=>{fields[name]=value;});
 
-    bb.on("file",(name:string,stream:any,info:any)=>{
-      const {filename,mimeType,encoding}=info;
+    bb.on("file",(name:string,stream:any,filename:string,encoding:string,mimeType:string)=>{
 
       if(name!==options.fieldName && !options.multiple){
         stream.resume();return;
