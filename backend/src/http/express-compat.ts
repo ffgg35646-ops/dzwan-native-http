@@ -120,7 +120,7 @@ function stripMount(req:Request,mount:string){
 function createRouter():RouterInstance{
   const layers:Layer[]=[];
   const router=((req:Request,res:Response,next:NextFunction)=>{
-    void dispatch(req,res,next);
+    return dispatch(req,res,next);
   }) as RouterInstance;
 
   router.use=(p:string|Handler,...hs:Handler[])=>{
