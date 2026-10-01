@@ -807,7 +807,18 @@ async function startStuckOrderMonitor(): Promise<void> {
 async function startServer(): Promise<void> {
   await ensureDatabaseConnection();
 
-  await startStuckOrderMonitor();
+  app.listen(env.port, () => {
+    console.log(
+      `DZWAN API running on http://localhost:${env.port}`,
+    );
+  });
+
+  void startStuckOrderMonitor().catch((error) => {
+    console.error(
+      "STUCK ORDER MONITOR STARTUP ERROR:",
+      error,
+    );
+  });
 
   let dispatchWorkerRunning = false;
 
@@ -851,11 +862,6 @@ async function startServer(): Promise<void> {
     );
   }, 30_000);
 
-  app.listen(env.port, () => {
-    console.log(
-      `DZWAN API running on http://localhost:${env.port}`,
-    );
-  });
 }
 
 startServer().catch((error) => {
