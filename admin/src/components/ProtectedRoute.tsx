@@ -31,7 +31,6 @@ export default function ProtectedRoute({
 }: Props) {
   const location = useLocation();
 
-  const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(() => {
     const authenticatedUser = (
       location.state as
@@ -79,19 +78,6 @@ export default function ProtectedRoute({
     );
   }, [location.state]);
 
-  if (loading) {
-    return (
-      <div
-        className="dashboard-loading"
-        dir="rtl"
-      >
-        <div className="loading-spinner" />
-        <span>
-          جارٍ التحقق من الجلسة...
-        </span>
-      </div>
-    );
-  }
 
   if (!user) {
     return (
