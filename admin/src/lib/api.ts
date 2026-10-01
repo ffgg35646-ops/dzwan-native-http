@@ -40,7 +40,7 @@ export function setAccessToken(
 
 const API_BASE_URL = import.meta.env.DEV
   ? (import.meta.env.VITE_API_URL || "/api")
-  : "/api";
+  : `${window.location.origin}/api`;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
