@@ -1,7 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, setAccessToken } from "../lib/api";
+import {
+  api,
+  setAccessToken,
+  setStoredAdminUser,
+} from "../lib/api";
 import type { AuthResponse } from "../types/auth";
 import MessageModal from "../components/admin/MessageModal";
 
@@ -65,6 +69,8 @@ export default function Login() {
         "dzwan_admin_permissions",
         JSON.stringify(loginPermissions),
       );
+
+      setStoredAdminUser(user);
 
       const firstAllowedPage =
         loginPermissions.find((item) =>
