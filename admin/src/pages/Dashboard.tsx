@@ -18,7 +18,10 @@ import {
   Truck,
   Users,
 } from "lucide-react";
-import { api } from "../lib/api";
+import {
+  api,
+  getStoredAdminUser,
+} from "../lib/api";
 import type { AdminUser } from "../types/auth";
 
 type DashboardActivityItem = {
@@ -51,6 +54,65 @@ type DashboardOrder = {
   total: number;
   createdAt: string;
 };
+
+type DashboardSnapshot = {
+  savedAt: number;
+  user: AdminUser;
+  dashboardStats: DashboardStats;
+  latestOrders: DashboardOrder[];
+  systemStatus: {
+    api: "online" | "offline" | "unknown";
+    database: "online" | "offline" | "unknown";
+  };
+  stuckOrdersCount: number;
+  dashboardEmergencyCount: number;
+  notificationCount: number;
+};
+
+function dashboardCacheKey(userId: string) {
+  return `dzwan_admin_dashboard_cache_v1_${userId}`;
+}
+
+function readDashboardSnapshot(
+  userId: string,
+): DashboardSnapshot | null {
+  try {
+    const raw = window.localStorage.getItem(
+      dashboardCacheKey(userId),
+    );
+
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      parsed.user?.id !== userId ||
+      !parsed.dashboardStats ||
+      !Array.isArray(parsed.latestOrders)
+    ) {
+      return null;
+    }
+
+    return parsed as DashboardSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function writeDashboardSnapshot(
+  snapshot: DashboardSnapshot,
+): void {
+  try {
+    window.localStorage.setItem(
+      dashboardCacheKey(snapshot.user.id),
+      JSON.stringify(snapshot),
+    );
+  } catch {
+    // لا نكسر الداشبورد إذا امتلأت مساحة التخزين.
+  }
+}
 
 const ACTIVE_ORDER_STATUSES = [
   "assigned",
@@ -239,236 +301,267 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function loadDashboard() {
+      const authenticatedUser = (
+        location.state as
+          | { authenticatedUser?: AdminUser }
+          | null
+          | undefined
+      )?.authenticatedUser;
+
+      const currentUser =
+        authenticatedUser || getStoredAdminUser();
+
+      if (!currentUser) {
+        navigate("/", { replace: true });
+        return;
+      }
+
+      if (
+        currentUser.role !== "admin" &&
+        currentUser.role !== "super_admin"
+      ) {
+        navigate("/", { replace: true });
+        return;
+      }
+
+      setUser(currentUser);
+
+      const cached = readDashboardSnapshot(currentUser.id);
+
+      if (cached) {
+        setUser(cached.user);
+        setDashboardStats(cached.dashboardStats);
+        setLatestOrders(cached.latestOrders);
+        setSystemStatus(cached.systemStatus);
+        setStuckOrdersCount(cached.stuckOrdersCount);
+        setDashboardEmergencyCount(
+          cached.dashboardEmergencyCount,
+        );
+        setNotificationCount(
+          cached.notificationCount,
+        );
+
+        // البيانات القديمة حقيقية من آخر استجابة ناجحة، لذلك نعرضها فورًا.
+        setLoading(false);
+      }
+
       try {
-        const authenticatedUser = (
-          location.state as
-            | { authenticatedUser?: AdminUser }
-            | null
-            | undefined
-        )?.authenticatedUser;
+        const [
+          ordersResponse,
+          captainsResponse,
+          establishmentsResponse,
+          notificationsResponse,
+          systemStatusResponse,
+          operationsDashboardResponse,
+          stuckResponse,
+          emergencyResponse,
+        ] = await Promise.all([
+          api.get("/orders"),
+          api.get("/captains"),
+          api.get("/establishments"),
+          api.get("/notifications"),
+          api.get("/system/status"),
+          api.get("/requirements/dashboard/operations"),
+          api.get("/ops/stuck"),
+          api.get("/ops/emergencies"),
+        ]);
 
-        const currentUser =
-          authenticatedUser ||
-          (
-            await api.get<{
-              success: boolean;
-              user: AdminUser;
-            }>("/auth/me")
-          ).data.user;
+        const orders = Array.isArray(
+          ordersResponse.data?.orders,
+        )
+          ? ordersResponse.data.orders
+          : [];
 
-        if (
-          currentUser.role !== "admin" &&
-          currentUser.role !== "super_admin"
-        ) {
-          navigate("/", { replace: true });
-          return;
-        }
+        const captains = Array.isArray(
+          captainsResponse.data?.captains,
+        )
+          ? captainsResponse.data.captains
+          : [];
 
-        setUser(currentUser);
+        const establishments = Array.isArray(
+          establishmentsResponse.data?.establishments,
+        )
+          ? establishmentsResponse.data.establishments
+          : [];
 
-        try {
-          const [
-            ordersResponse,
-            captainsResponse,
-            establishmentsResponse,
-            notificationsResponse,
-            systemStatusResponse,
-            operationsDashboardResponse,
-            stuckResponse,
-            emergencyResponse,
-          ] = await Promise.all([
-            api.get("/orders"),
-            api.get("/captains"),
-            api.get("/establishments"),
-            api.get("/notifications"),
-            api.get("/system/status"),
-            api.get("/requirements/dashboard/operations"),
-            api.get("/ops/stuck"),
-            api.get("/ops/emergencies"),
-          ]);
+        const operationsDashboard =
+          operationsDashboardResponse.data?.dashboard ??
+          operationsDashboardResponse.data?.data ??
+          operationsDashboardResponse.data ??
+          null;
 
-          const orders = Array.isArray(
-            ordersResponse.data?.orders,
-          )
-            ? ordersResponse.data.orders
-            : [];
+        const stuckAlerts = Array.isArray(
+          stuckResponse.data?.alerts,
+        )
+          ? stuckResponse.data.alerts
+          : [];
 
-          const captains = Array.isArray(
-            captainsResponse.data?.captains,
-          )
-            ? captainsResponse.data.captains
-            : [];
+        const emergencyRows = Array.isArray(
+          emergencyResponse.data?.emergencies,
+        )
+          ? emergencyResponse.data.emergencies
+          : [];
 
-          const establishments = Array.isArray(
-            establishmentsResponse.data?.establishments,
-          )
-            ? establishmentsResponse.data.establishments
-            : [];
-
-          const operationsDashboard =
-            operationsDashboardResponse.data?.dashboard ??
-            operationsDashboardResponse.data?.data ??
-            operationsDashboardResponse.data ??
-            null;
-
-          const stuckAlerts = Array.isArray(
-            stuckResponse.data?.alerts,
-          )
-            ? stuckResponse.data.alerts
-            : [];
-
-          const emergencyRows = Array.isArray(
-            emergencyResponse.data?.emergencies,
-          )
-            ? emergencyResponse.data.emergencies
-            : [];
-
-          setDashboardEmergencyCount(
-            emergencyRows.filter(
-              (item: { status?: string }) =>
-                item.status === "open" ||
-                item.status === "acknowledged",
-            ).length,
-          );
-
-          setStuckOrdersCount(
-            stuckAlerts.filter(
-              (item: { status?: string }) =>
-                item.status === "open" ||
-                item.status === "acknowledged",
-            ).length,
-          );
-
-          setNotificationCount(
-            Number(
-              notificationsResponse.data?.unreadCount ?? 0,
-            ),
-          );
-
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          const todayOrders = orders.filter(
-            (order: { createdAt: string }) =>
-              new Date(order.createdAt) >= today,
-          ).length;
-
-          const activeOrders = orders.filter(
-            (order: {
-              status: string;
-              captainId?: string | {
-                _id?: string;
-                id?: string;
-              } | null;
-            }) => {
-              const captainId =
-                typeof order.captainId === "string"
-                  ? order.captainId
-                  : order.captainId &&
-                      typeof order.captainId === "object"
-                    ? String(
-                        order.captainId._id ||
-                          order.captainId.id ||
-                          "",
-                      )
-                    : "";
-
-              return (
-                Boolean(captainId) &&
-                ACTIVE_ORDER_STATUSES.includes(
-                  order.status,
-                )
-              );
-            },
-          ).length;
-
-          const onlineCaptains = captains.filter(
-            (captain: { isOnline?: boolean }) =>
-              captain.isOnline === true,
-          ).length;
-
-          const activeEstablishments = establishments.filter(
+        const nextDashboardEmergencyCount =
+          emergencyRows.filter(
             (item: { status?: string }) =>
-              item.status === "active",
+              item.status === "open" ||
+              item.status === "acknowledged",
           ).length;
 
-          setSystemStatus({
-            api:
-              systemStatusResponse.data?.services?.api?.status ===
-              "online"
-                ? "online"
-                : systemStatusResponse.data?.services?.api?.status ===
-                    "offline"
-                  ? "offline"
-                  : "unknown",
-            database:
-              systemStatusResponse.data?.services?.database?.status ===
-              "online"
-                ? "online"
-                : systemStatusResponse.data?.services?.database?.status ===
-                    "offline"
-                  ? "offline"
-                  : "unknown",
-          });
+        const nextStuckOrdersCount =
+          stuckAlerts.filter(
+            (item: { status?: string }) =>
+              item.status === "open" ||
+              item.status === "acknowledged",
+          ).length;
 
-          setDashboardStats({
-            todayOrders: Number(
-              operationsDashboard?.todayOrders ?? todayOrders,
-            ),
-            activeOrders,
-            onlineCaptains: Number(
-              operationsDashboard?.onlineCaptains ?? onlineCaptains,
-            ),
-            activeEstablishments: Number(
-              operationsDashboard?.activeEstablishments ??
-                activeEstablishments,
-            ),
-            topRestaurants: Array.isArray(
-              operationsDashboard?.topRestaurants,
-            )
-              ? operationsDashboard.topRestaurants
-              : [],
-            topShops: Array.isArray(
-              operationsDashboard?.topShops,
-            )
-              ? operationsDashboard.topShops
-              : [],
-            topAreas: Array.isArray(
-              operationsDashboard?.topAreas,
-            )
-              ? operationsDashboard.topAreas
-              : [],
-            todayOrderStatistics:
-              operationsDashboard?.todayOrderStatistics ?? {
-                total: todayOrders,
-                pending: 0,
-                active: activeOrders,
-                delivered: 0,
-                cancelled: 0,
-              },
-          });
+        const nextNotificationCount = Number(
+          notificationsResponse.data?.unreadCount ?? 0,
+        );
 
-          setLatestOrders(
-            orders
-              .slice()
-              .sort(
-                (
-                  a: { createdAt: string },
-                  b: { createdAt: string },
-                ) =>
-                  new Date(b.createdAt).getTime() -
-                  new Date(a.createdAt).getTime(),
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const todayOrders = orders.filter(
+          (order: { createdAt: string }) =>
+            new Date(order.createdAt) >= today,
+        ).length;
+
+        const activeOrders = orders.filter(
+          (order: {
+            status: string;
+            captainId?: string | {
+              _id?: string;
+              id?: string;
+            } | null;
+          }) => {
+            const captainId =
+              typeof order.captainId === "string"
+                ? order.captainId
+                : order.captainId &&
+                    typeof order.captainId === "object"
+                  ? String(
+                      order.captainId._id ||
+                        order.captainId.id ||
+                        "",
+                    )
+                  : "";
+
+            return (
+              Boolean(captainId) &&
+              ACTIVE_ORDER_STATUSES.includes(
+                order.status,
               )
-              .slice(0, 5),
-          );
-        } catch (dashboardError) {
+            );
+          },
+        ).length;
+
+        const onlineCaptains = captains.filter(
+          (captain: { isOnline?: boolean }) =>
+            captain.isOnline === true,
+        ).length;
+
+        const activeEstablishments = establishments.filter(
+          (item: { status?: string }) =>
+            item.status === "active",
+        ).length;
+
+        const nextSystemStatus = {
+          api:
+            systemStatusResponse.data?.services?.api?.status ===
+            "online"
+              ? ("online" as const)
+              : systemStatusResponse.data?.services?.api?.status ===
+                  "offline"
+                ? ("offline" as const)
+                : ("unknown" as const),
+          database:
+            systemStatusResponse.data?.services?.database?.status ===
+            "online"
+              ? ("online" as const)
+              : systemStatusResponse.data?.services?.database?.status ===
+                  "offline"
+                ? ("offline" as const)
+                : ("unknown" as const),
+        };
+
+        const nextDashboardStats: DashboardStats = {
+          todayOrders: Number(
+            operationsDashboard?.todayOrders ?? todayOrders,
+          ),
+          activeOrders,
+          onlineCaptains: Number(
+            operationsDashboard?.onlineCaptains ?? onlineCaptains,
+          ),
+          activeEstablishments: Number(
+            operationsDashboard?.activeEstablishments ??
+              activeEstablishments,
+          ),
+          topRestaurants: Array.isArray(
+            operationsDashboard?.topRestaurants,
+          )
+            ? operationsDashboard.topRestaurants
+            : [],
+          topShops: Array.isArray(
+            operationsDashboard?.topShops,
+          )
+            ? operationsDashboard.topShops
+            : [],
+          topAreas: Array.isArray(
+            operationsDashboard?.topAreas,
+          )
+            ? operationsDashboard.topAreas
+            : [],
+          todayOrderStatistics:
+            operationsDashboard?.todayOrderStatistics ?? {
+              total: todayOrders,
+              pending: 0,
+              active: activeOrders,
+              delivered: 0,
+              cancelled: 0,
+            },
+        };
+
+        const nextLatestOrders = orders
+          .slice()
+          .sort(
+            (
+              a: { createdAt: string },
+              b: { createdAt: string },
+            ) =>
+              new Date(b.createdAt).getTime() -
+              new Date(a.createdAt).getTime(),
+          )
+          .slice(0, 5);
+
+        setDashboardEmergencyCount(
+          nextDashboardEmergencyCount,
+        );
+        setStuckOrdersCount(nextStuckOrdersCount);
+        setNotificationCount(nextNotificationCount);
+        setSystemStatus(nextSystemStatus);
+        setDashboardStats(nextDashboardStats);
+        setLatestOrders(nextLatestOrders);
+
+        writeDashboardSnapshot({
+          savedAt: Date.now(),
+          user: currentUser,
+          dashboardStats: nextDashboardStats,
+          latestOrders: nextLatestOrders,
+          systemStatus: nextSystemStatus,
+          stuckOrdersCount: nextStuckOrdersCount,
+          dashboardEmergencyCount:
+            nextDashboardEmergencyCount,
+          notificationCount: nextNotificationCount,
+        });
+      } catch (dashboardError) {
+        if (import.meta.env.DEV) {
           console.error(
-            "Dashboard statistics error:",
+            "Dashboard refresh error:",
             dashboardError,
           );
         }
-      } catch {
-        navigate("/", { replace: true });
       } finally {
         setLoading(false);
       }
