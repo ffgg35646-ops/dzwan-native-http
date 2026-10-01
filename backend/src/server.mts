@@ -113,6 +113,33 @@ app.use((_req, res, next) => {
 
 app.use(express.json({ limit: "1mb" }));
 
+// Keep recent authenticated GET responses available in the browser so
+// pages can render the last real data immediately while a fresh request
+// is revalidated in the background.
+app.use((req, res, next) => {
+  const pathName = req.path;
+
+  const shouldCache =
+    req.method === "GET" &&
+    pathName.startsWith("/api/") &&
+    !pathName.startsWith("/api/auth/") &&
+    pathName !== "/api/health" &&
+    pathName !== "/api/system/status";
+
+  if (shouldCache) {
+    res.setHeader(
+      "Cache-Control",
+      "private, max-age=5, stale-while-revalidate=60",
+    );
+    res.setHeader(
+      "Vary",
+      "Origin, Authorization, Cookie",
+    );
+  }
+
+  next();
+});
+
 app.use(
   "/uploads",
   express.static(
