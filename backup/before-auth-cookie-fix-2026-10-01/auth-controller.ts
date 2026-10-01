@@ -1,0 +1,1 @@
+Backup marker: original backend/src/controllers/auth.controller.ts was saved before the 2026-10-01 cookie compatibility change.
