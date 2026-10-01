@@ -1,7 +1,7 @@
 
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { getStoredAdminUser } from "../lib/api";
 
 type Role =
   | "super_admin"
@@ -31,12 +31,30 @@ export default function ProtectedRoute({
 }: Props) {
   const location = useLocation();
 
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(() => {
+    const authenticatedUser = (
+      location.state as
+        | { authenticatedUser?: User }
+        | null
+        | undefined
+    )?.authenticatedUser;
+
+    if (
+      authenticatedUser &&
+      authenticatedUser.status === "active"
+    ) {
+      return authenticatedUser;
+    }
+
+    const storedUser = getStoredAdminUser();
+
+    return storedUser && storedUser.status === "active"
+      ? (storedUser as User)
+      : null;
+  });
 
   useEffect(() => {
-    let mounted = true;
-
     const authenticatedUser = (
       location.state as
         | { authenticatedUser?: User }
@@ -49,52 +67,16 @@ export default function ProtectedRoute({
       authenticatedUser.status === "active"
     ) {
       setUser(authenticatedUser);
-      setLoading(false);
-      return () => {
-        mounted = false;
-      };
+      return;
     }
 
-    async function loadUser() {
-      try {
-        const response = await api.get<{
-          success: boolean;
-          user: User;
-        }>("/auth/me");
+    const storedUser = getStoredAdminUser();
 
-        if (!mounted) return;
-
-        const currentUser = response.data.user;
-
-        if (currentUser.status !== "active") {
-          setUser(null);
-          return;
-        }
-
-        setUser(currentUser);
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error(
-            "Protected route auth error:",
-            error,
-          );
-        }
-
-        if (mounted) {
-          setUser(null);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadUser();
-
-    return () => {
-      mounted = false;
-    };
+    setUser(
+      storedUser && storedUser.status === "active"
+        ? (storedUser as User)
+        : null,
+    );
   }, [location.state]);
 
   if (loading) {
