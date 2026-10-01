@@ -173,8 +173,19 @@ export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [user, setUser] = useState<AdminUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AdminUser | null>(() => {
+    const authenticatedUser = (
+      location.state as
+        | { authenticatedUser?: AdminUser }
+        | null
+        | undefined
+    )?.authenticatedUser;
+
+    return (
+      authenticatedUser ||
+      getStoredAdminUser()
+    );
+  });
 
   const [registrationPendingCount, setRegistrationPendingCount] =
     useState(0);
@@ -326,9 +337,6 @@ export default function Dashboard() {
 
       setUser(currentUser);
 
-      // افتح واجهة الداشبورد فورًا ولا تربط ظهور الصفحة بتحميل البيانات.
-      setLoading(false);
-
       const cached = readDashboardSnapshot(currentUser.id);
 
       if (cached) {
@@ -344,7 +352,6 @@ export default function Dashboard() {
           cached.notificationCount,
         );
 
-        // البيانات القديمة حقيقية من آخر استجابة ناجحة، لذلك تظهر فورًا.
       }
 
       try {
@@ -564,51 +571,12 @@ export default function Dashboard() {
             dashboardError,
           );
         }
-      } finally {
-        setLoading(false);
       }
     }
 
     void loadDashboard();
   }, [location.state, navigate]);
 
-
-  if (loading) {
-    return (
-      <>
-        <style>{`
-          .dashboard-loading-new {
-            min-height: 60vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            color: #6b7280;
-            direction: rtl;
-          }
-
-          .dashboard-loading-spinner {
-            width: 34px;
-            height: 34px;
-            border: 3px solid #e5e7eb;
-            border-top-color: #f28c28;
-            border-radius: 50%;
-            animation: dashboard-spin .8s linear infinite;
-          }
-
-          @keyframes dashboard-spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-
-        <div className="dashboard-loading-new">
-          <div className="dashboard-loading-spinner" />
-          <span>جارٍ تحميل لوحة التحكم...</span>
-        </div>
-      </>
-    );
-  }
 
   if (!user) {
     return null;
