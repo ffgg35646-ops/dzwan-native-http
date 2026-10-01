@@ -37,6 +37,24 @@ export default function ProtectedRoute({
   useEffect(() => {
     let mounted = true;
 
+    const authenticatedUser = (
+      location.state as
+        | { authenticatedUser?: User }
+        | null
+        | undefined
+    )?.authenticatedUser;
+
+    if (
+      authenticatedUser &&
+      authenticatedUser.status === "active"
+    ) {
+      setUser(authenticatedUser);
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     async function loadUser() {
       try {
         const response = await api.get<{
@@ -77,7 +95,7 @@ export default function ProtectedRoute({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [location.state]);
 
   if (loading) {
     return (
