@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Activity,
   AlertTriangle,
@@ -108,6 +108,7 @@ function statusLabel(status: string) {
 }
 
 export default function Dashboard() {
+  const location = useLocation();
   const navigate = useNavigate();
 
   const [user, setUser] = useState<AdminUser | null>(null);
@@ -239,12 +240,21 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const response = await api.get<{
-          success: boolean;
-          user: AdminUser;
-        }>("/auth/me");
+        const authenticatedUser = (
+          location.state as
+            | { authenticatedUser?: AdminUser }
+            | null
+            | undefined
+        )?.authenticatedUser;
 
-        const currentUser = response.data.user;
+        const currentUser =
+          authenticatedUser ||
+          (
+            await api.get<{
+              success: boolean;
+              user: AdminUser;
+            }>("/auth/me")
+          ).data.user;
 
         if (
           currentUser.role !== "admin" &&
@@ -465,7 +475,7 @@ export default function Dashboard() {
     }
 
     void loadDashboard();
-  }, [navigate]);
+  }, [location.state, navigate]);
 
 
   if (loading) {
