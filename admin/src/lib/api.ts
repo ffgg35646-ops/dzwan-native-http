@@ -2,8 +2,10 @@ import axios, {
   type AxiosError,
   type InternalAxiosRequestConfig,
 } from "axios";
+import type { AdminUser } from "../types/auth";
 
 const ACCESS_TOKEN_KEY = "dzwan_access_token";
+const ADMIN_USER_KEY = "dzwan_admin_user";
 
 export function getStoredAccessToken(): string | null {
   try {
@@ -12,6 +14,51 @@ export function getStoredAccessToken(): string | null {
     );
   } catch {
     return null;
+  }
+}
+
+export function getStoredAdminUser(): AdminUser | null {
+  try {
+    const raw = window.localStorage.getItem(
+      ADMIN_USER_KEY,
+    );
+
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.role !== "string" ||
+      typeof parsed.status !== "string"
+    ) {
+      return null;
+    }
+
+    return parsed as AdminUser;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredAdminUser(
+  user: AdminUser | null,
+): void {
+  try {
+    if (user) {
+      window.localStorage.setItem(
+        ADMIN_USER_KEY,
+        JSON.stringify(user),
+      );
+    } else {
+      window.localStorage.removeItem(
+        ADMIN_USER_KEY,
+      );
+    }
+  } catch {
+    // Ignore localStorage errors.
   }
 }
 
