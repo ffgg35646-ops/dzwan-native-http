@@ -38,9 +38,10 @@ export function setAccessToken(
   }
 }
 
-const API_BASE_URL = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_URL || "/api")
-  : `${window.location.origin}/api`;
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV
+    ? "/api"
+    : "https://dzwan-native-http.vercel.app/api");
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
