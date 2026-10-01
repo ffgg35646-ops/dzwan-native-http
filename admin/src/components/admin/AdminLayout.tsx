@@ -187,7 +187,7 @@ export default function AdminLayout({
   userName = "مدير عام",
 }: AdminLayoutProps) {
   const navigate = useNavigate();
-  const [adminPermissions, setAdminPermissions] =
+  const [adminPermissions] =
     useState<string[]>(() => {
       try {
         const raw =
@@ -209,9 +209,6 @@ export default function AdminLayout({
         return [];
       }
     });
-
-  const [, setPermissionsLoaded] =
-    useState(false);
 
   // الصلاحيات موجودة في localStorage من آخر Login ناجح.
   // لا نطلب /auth/me مرة ثانية لمجرد بناء القائمة.
