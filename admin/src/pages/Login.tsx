@@ -77,6 +77,9 @@ export default function Login() {
 
       navigate(firstAllowedPath, {
         replace: true,
+        state: {
+          authenticatedUser: user,
+        },
       });
     } catch (err: any) {
       setError(
