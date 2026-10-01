@@ -326,6 +326,9 @@ export default function Dashboard() {
 
       setUser(currentUser);
 
+      // افتح واجهة الداشبورد فورًا ولا تربط ظهور الصفحة بتحميل البيانات.
+      setLoading(false);
+
       const cached = readDashboardSnapshot(currentUser.id);
 
       if (cached) {
@@ -341,8 +344,7 @@ export default function Dashboard() {
           cached.notificationCount,
         );
 
-        // البيانات القديمة حقيقية من آخر استجابة ناجحة، لذلك نعرضها فورًا.
-        setLoading(false);
+        // البيانات القديمة حقيقية من آخر استجابة ناجحة، لذلك تظهر فورًا.
       }
 
       try {
