@@ -209,44 +209,9 @@ export default function AdminLayout({
   const [, setPermissionsLoaded] =
     useState(false);
 
-  useEffect(() => {
-    let active = true;
+  // الصلاحيات موجودة في localStorage من آخر Login ناجح.
+  // لا نطلب /auth/me مرة ثانية لمجرد بناء القائمة.
 
-    void api
-      .get("/auth/me")
-      .then((response) => {
-        const data = response?.data ?? {};
-        const user =
-          data.user ??
-          data.data?.user ??
-          data;
-
-        const permissions = Array.isArray(user?.permissions)
-          ? user.permissions.filter(
-              (item: unknown): item is string =>
-                typeof item === "string",
-            )
-          : [];
-
-        if (active) {
-          setAdminPermissions(permissions);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setAdminPermissions([]);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setPermissionsLoaded(true);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const isPageScopedAdmin =
     adminPermissions.some((item) =>
