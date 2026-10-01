@@ -6,8 +6,6 @@ import axios, {
 const ACCESS_TOKEN_KEY = "dzwan_access_token";
 
 export function getStoredAccessToken(): string | null {
-  if (!import.meta.env.DEV) return null;
-
   try {
     return window.localStorage.getItem(
       ACCESS_TOKEN_KEY,
@@ -20,8 +18,6 @@ export function getStoredAccessToken(): string | null {
 export function setAccessToken(
   token: string | null,
 ): void {
-  if (!import.meta.env.DEV) return;
-
   try {
     if (token) {
       window.localStorage.setItem(
