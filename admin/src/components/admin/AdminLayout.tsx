@@ -23,7 +23,11 @@ import {
   type LucideIcon,
   Tag,
 } from "lucide-react";
-import { setAccessToken, api } from "../../lib/api";
+import {
+  setAccessToken,
+  setStoredAdminUser,
+  api,
+} from "../../lib/api";
 import { pagePermission } from "../../lib/adminPages";
 
 interface AdminLayoutProps {
@@ -827,6 +831,7 @@ export default function AdminLayout({
     try {
       await api.post("/auth/logout");
       setAccessToken(null);
+      setStoredAdminUser(null);
     } finally {
       navigate("/", { replace: true });
     }
