@@ -131,7 +131,6 @@ function BackgroundPagePreloader() {
 
     let cancelled = false;
     let timeoutId: number | undefined;
-    let idleId: number | undefined;
 
     const preload = () => {
       if (cancelled) return;
@@ -143,21 +142,7 @@ function BackgroundPagePreloader() {
       });
     };
 
-    const schedule = () => {
-      if (cancelled) return;
-
-      if ("requestIdleCallback" in window) {
-        idleId = window.requestIdleCallback(
-          () => preload(),
-          { timeout: 5000 },
-        );
-        return;
-      }
-
-      timeoutId = window.setTimeout(preload, 2500);
-    };
-
-    timeoutId = window.setTimeout(schedule, 1200);
+    timeoutId = window.setTimeout(preload, 1200);
 
     return () => {
       cancelled = true;
@@ -165,14 +150,8 @@ function BackgroundPagePreloader() {
       if (timeoutId !== undefined) {
         window.clearTimeout(timeoutId);
       }
-
-      if (
-        idleId !== undefined &&
-        "cancelIdleCallback" in window
-      ) {
-        window.cancelIdleCallback(idleId);
-      }
     };
+
   }, [location.pathname]);
 
   return null;
