@@ -117,6 +117,24 @@ export async function createNotifications(
         ordered: false,
       },
     );
+
+    // Bulk notifications must also reach registered mobile devices.
+    await sendExpoPushToUsers(
+      userIds.map((userId) => String(userId)),
+      {
+        title: input.title,
+        body: input.message,
+        data: {
+          type: input.type,
+          orderId: input.orderId
+            ? String(input.orderId)
+            : null,
+          establishmentId: input.establishmentId
+            ? String(input.establishmentId)
+            : null,
+        },
+      },
+    );
   } catch (error) {
     console.error(
       "Create notifications error:",
