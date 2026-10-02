@@ -20,32 +20,38 @@ router.post(
     fieldName: "idFront",
     destination: "/tmp/uploads/registration",
     prefix: "registration",
-    maxSize: 4 * 1024 * 1024,
+    maxSize: 1 * 1024 * 1024,
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
     maxFiles: 4,
     multiple: true,
   }),
-  (req, res, next) => {
-    const files = req.files as {
-      [field: string]: any[] | undefined;
-    };
+  async (req, res, next) => {
+    try {
+      const files = req.files as {
+        [field: string]: any[] | undefined;
+      };
 
-    const fields = [
-      ["idFront", "idFrontUrl"],
-      ["idBack", "idBackUrl"],
-      ["residenceFront", "residenceFrontUrl"],
-      ["residenceBack", "residenceBackUrl"],
-    ];
+      const fields = [
+        ["idFront", "idFrontUrl"],
+        ["idBack", "idBackUrl"],
+        ["residenceFront", "residenceFrontUrl"],
+        ["residenceBack", "residenceBackUrl"],
+      ];
 
-    for (const [fileField, urlField] of fields) {
-      const file = files?.[fileField]?.[0];
-      if (file) {
-        req.body[urlField] =
-          "/uploads/registration/" + file.filename;
+      for (const [fileField, urlField] of fields) {
+        const file = files?.[fileField]?.[0];
+        if (file) {
+          req.body[urlField] = await uploadImageToBlob(
+            "registration",
+            file,
+          );
+        }
       }
-    }
 
-    next();
+      next();
+    } catch (error) {
+      next(error);
+    }
   },
   registerCaptain,
 );
