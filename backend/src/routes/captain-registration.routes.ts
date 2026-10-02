@@ -4,6 +4,7 @@ import {
   requireAuth,
   requireAdmin,
 } from "../middleware/auth.middleware.js";
+import { uploadImageToBlob } from "../services/blob-upload.service.js";
 import {
   registerCaptain,
   verifyCaptainRegistration,
