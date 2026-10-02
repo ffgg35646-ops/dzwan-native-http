@@ -25,7 +25,7 @@ const schema = new Schema<IAppBranding>(
   {
     appName: {
       type: String,
-      default: "Zajel Delivery",
+      default: "زاجل",
     },
 
     primaryColor: {
