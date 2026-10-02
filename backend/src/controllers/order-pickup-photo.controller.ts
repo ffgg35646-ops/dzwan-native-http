@@ -5,6 +5,7 @@ import {
   saveOrderPickupPhoto,
   getOrderPickupPhoto,
 } from "../services/order-pickup-photo.service.js";
+import { uploadImageToBlob } from "../services/blob-upload.service.js";
 
 export async function uploadPickupPhoto(
   req: AuthenticatedRequest,
@@ -25,8 +26,10 @@ export async function uploadPickupPhoto(
       });
     }
 
-    const photoUrl =
-      `/uploads/pickup/${req.file.filename}`;
+    const photoUrl = await uploadImageToBlob(
+      "pickup",
+      req.file,
+    );
 
     const photo = await saveOrderPickupPhoto(
       orderId,
