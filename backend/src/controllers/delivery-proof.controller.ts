@@ -8,6 +8,7 @@ import {
   getDeliveryProof,
   ensureOrderCaptain,
 } from "../services/delivery-proof.service.js";
+import { uploadImageToBlob } from "../services/blob-upload.service.js";
 
 export async function createOtp(
   req: AuthenticatedRequest,
@@ -100,10 +101,15 @@ export async function uploadPhoto(
       captainId,
     );
 
+    const photoUrl = await uploadImageToBlob(
+      "delivery-proof",
+      req.file,
+    );
+
     const result = await setDeliveryPhoto(
       orderId,
       captainId,
-      `/uploads/delivery-proof/${req.file.filename}`,
+      photoUrl,
     );
 
     return res.status(201).json({
