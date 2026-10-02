@@ -175,13 +175,13 @@ export async function login(
 
     res.cookie(ACCESS_COOKIE, accessToken, {
       ...baseCookieOptions,
-      maxAge: process.env.NODE_ENV === "production" ? 15 * 60 * 1000 : 3650 * 24 * 60 * 60 * 1000,
+      maxAge: 3650 * 24 * 60 * 60 * 1000,
     });
 
     res.cookie(REFRESH_COOKIE, refreshToken, {
       ...baseCookieOptions,
       sameSite: "strict",
-      maxAge: process.env.NODE_ENV === "production" ? 30 * 24 * 60 * 60 * 1000 : 3650 * 24 * 60 * 60 * 1000,
+      maxAge: 3650 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({
