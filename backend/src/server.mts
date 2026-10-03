@@ -113,6 +113,26 @@ app.use((_req, res, next) => {
 
 app.use(express.json({ limit: "1mb" }));
 
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  console.log("[DZWAN REQUEST]", {
+    method: req.method,
+    path: req.path,
+    origin: req.get("origin") || null,
+  });
+
+  res.on("finish", () => {
+    console.log("[DZWAN RESPONSE]", {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
+
+  next();
+});
+
 // Keep recent authenticated GET responses available in the browser so
 // pages can render the last real data immediately while a fresh request
 // is revalidated in the background.
