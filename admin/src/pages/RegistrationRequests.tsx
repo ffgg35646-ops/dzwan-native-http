@@ -232,23 +232,14 @@ export default function RegistrationRequests() {
         }
       }
 
-      const response = await fetch(documentUrl, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `تعذر تحميل الصورة (${response.status})`,
-        );
-      }
-
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
+      // الصور المرفوعة إلى Vercel Blob عامة، لذلك لا نحتاج إلى fetch
+      // مع credentials وتحويلها إلى Blob محلي. عرض الرابط مباشرة يتجنب
+      // مشاكل CORS في المتصفح ويحافظ على الرابط الأصلي.
       setDocumentPreview({
         label,
-        url: blobUrl,
+        url: documentUrl,
       });
+      setDocumentLoading(false);
     } catch (error) {
       console.error("openDocument error:", error);
 
@@ -257,13 +248,12 @@ export default function RegistrationRequests() {
           ? error.message
           : "تعذر فتح الصورة.",
       );
-    } finally {
       setDocumentLoading(false);
     }
   }
 
   function closeDocumentPreview() {
-    if (documentPreview?.url) {
+    if (documentPreview?.url?.startsWith("blob:")) {
       URL.revokeObjectURL(documentPreview.url);
     }
 
@@ -2030,6 +2020,14 @@ export default function RegistrationRequests() {
                 <img
                   src={documentPreview.url}
                   alt={documentPreview.label}
+                  onLoad={() => {
+                    setDocumentLoading(false);
+                    setDocumentError("");
+                  }}
+                  onError={() => {
+                    setDocumentLoading(false);
+                    setDocumentError("تعذر تحميل الصورة. تحقق من رابط الصورة أو صلاحية التخزين.");
+                  }}
                   style={{
                     display: "block",
                     maxWidth: "100%",
