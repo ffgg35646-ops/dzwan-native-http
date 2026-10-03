@@ -179,6 +179,13 @@ export async function registerCaptain(req: Request, res: Response) {
     if (error instanceof Error && error.message === "SMTP_NOT_CONFIGURED") {
       return res.status(500).json({
         message: "إعداد البريد الإلكتروني غير مكتمل.",
+        smtpDebug: {
+          smtpUserConfigured: Boolean(process.env.SMTP_USER),
+          smtpPassConfigured: Boolean(process.env.SMTP_PASS),
+          smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
+          smtpPort: Number(process.env.SMTP_PORT || 465),
+          smtpSecure: (process.env.SMTP_SECURE || "true") === "true",
+        },
       });
     }
 
