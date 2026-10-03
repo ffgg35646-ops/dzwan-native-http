@@ -183,15 +183,18 @@ export async function registerCaptain(req: Request, res: Response) {
         flow: "captain",
         errorName: error instanceof Error ? error.name : typeof error,
         errorMessage: error instanceof Error ? error.message : String(error),
-        errorCode: typeof error === "object" && error !== null && "code" in error
-          ? String((error as { code?: unknown }).code ?? "")
-          : "",
-        responseCode: typeof error === "object" && error !== null && "responseCode" in error
-          ? Number((error as { responseCode?: unknown }).responseCode ?? 0)
-          : 0,
+        errorCode:
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code?: unknown }).code ?? "")
+            : "",
+        responseCode:
+          typeof error === "object" &&
+          error !== null &&
+          "responseCode" in error
+            ? Number((error as { responseCode?: unknown }).responseCode ?? 0)
+            : 0,
       });
 
-    } catch (error) {
       await CaptainRegistrationVerificationModel.findByIdAndDelete(
         verification._id,
       );
