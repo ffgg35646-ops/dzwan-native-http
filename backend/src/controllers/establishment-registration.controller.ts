@@ -21,6 +21,17 @@ export async function registerEstablishment(
   req: Request,
   res: Response,
 ) {
+
+  console.log("[DZWAN REGISTER] START", {
+    flow: "establishment",
+    path: req.path,
+    email: req.body?.email ? String(req.body.email).trim().toLowerCase() : null,
+    smtpUserConfigured: Boolean(process.env.SMTP_USER),
+    smtpPassConfigured: Boolean(process.env.SMTP_PASS),
+    smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
+    smtpPort: Number(process.env.SMTP_PORT || 465),
+    smtpSecure: (process.env.SMTP_SECURE || "true") === "true",
+  });
   try {
     const {
       name,
@@ -185,12 +196,24 @@ export async function registerEstablishment(
         pushToken: pushToken || null,
       });
 
+    console.log("[DZWAN REGISTER] BEFORE SMTP", {
+      flow: "establishment",
+      recipient: normalizedGmail,
+    });
+
     try {
       await sendEstablishmentRegistrationOtp(
         normalizedGmail,
         otp,
       );
     } catch (error) {
+      console.error("[DZWAN REGISTER] SMTP FAILED", {
+        flow: "establishment",
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorCode: typeof error === "object" && error !== null && "code" in error ? String((error as { code?: unknown }).code ?? "") : "",
+        responseCode: typeof error === "object" && error !== null && "responseCode" in error ? Number((error as { responseCode?: unknown }).responseCode ?? 0) : 0,
+      });
       await EstablishmentRegistrationVerificationModel.findByIdAndDelete(
         verification._id,
       );
@@ -203,7 +226,13 @@ export async function registerEstablishment(
       status: "pending_email_verification",
     });
   } catch (error) {
-    console.error("registerEstablishment error:", error);
+    console.error("[DZWAN REGISTER] FAILED", {
+      flow: "establishment",
+      errorName: error instanceof Error ? error.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorCode: typeof error === "object" && error !== null && "code" in error ? String((error as { code?: unknown }).code ?? "") : "",
+      responseCode: typeof error === "object" && error !== null && "responseCode" in error ? Number((error as { responseCode?: unknown }).responseCode ?? 0) : 0,
+    });
 
     if (
       error instanceof Error &&
