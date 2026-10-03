@@ -18,6 +18,18 @@ import { sendExpoPushToTokens } from "../services/push-notification.service.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
 
 export async function registerCaptain(req: Request, res: Response) {
+
+  console.log("[DZWAN REGISTER] START", {
+    flow: "captain",
+    path: req.path,
+    email: req.body?.email ? String(req.body.email).trim().toLowerCase() : null,
+    gmail: req.body?.gmail ? String(req.body.gmail).trim().toLowerCase() : null,
+    smtpUserConfigured: Boolean(process.env.SMTP_USER),
+    smtpPassConfigured: Boolean(process.env.SMTP_PASS),
+    smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
+    smtpPort: Number(process.env.SMTP_PORT || 465),
+    smtpSecure: (process.env.SMTP_SECURE || "true") === "true",
+  });
   try {
     const {
       fullName,
@@ -156,11 +168,29 @@ export async function registerCaptain(req: Request, res: Response) {
         pushToken: pushToken || null,
       });
 
+    console.log("[DZWAN REGISTER] BEFORE SMTP", {
+      flow: "captain",
+      recipient: normalizedGmail,
+    });
+
     try {
       await sendCaptainRegistrationOtp(
         normalizedGmail,
         otp,
       );
+    } catch (error) {
+      console.error("[DZWAN REGISTER] SMTP FAILED", {
+        flow: "captain",
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorCode: typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code?: unknown }).code ?? "")
+          : "",
+        responseCode: typeof error === "object" && error !== null && "responseCode" in error
+          ? Number((error as { responseCode?: unknown }).responseCode ?? 0)
+          : 0,
+      });
+
     } catch (error) {
       await CaptainRegistrationVerificationModel.findByIdAndDelete(
         verification._id,
@@ -174,7 +204,17 @@ export async function registerCaptain(req: Request, res: Response) {
       status: "pending_email_verification",
     });
   } catch (error) {
-    console.error("registerCaptain error:", error);
+    console.error("[DZWAN REGISTER] FAILED", {
+      flow: "captain",
+      errorName: error instanceof Error ? error.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorCode: typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "",
+      responseCode: typeof error === "object" && error !== null && "responseCode" in error
+        ? Number((error as { responseCode?: unknown }).responseCode ?? 0)
+        : 0,
+    });
 
     if (error instanceof Error && error.message === "SMTP_NOT_CONFIGURED") {
       return res.status(500).json({
