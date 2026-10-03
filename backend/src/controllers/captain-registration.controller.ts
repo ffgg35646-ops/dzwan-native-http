@@ -191,6 +191,20 @@ export async function registerCaptain(req: Request, res: Response) {
 
     return res.status(500).json({
       message: "حدث خطأ أثناء إرسال كود التحقق.",
+      smtpDebug: {
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorCode:
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code?: unknown }).code ?? "")
+            : "",
+        responseCode:
+          typeof error === "object" &&
+          error !== null &&
+          "responseCode" in error
+            ? Number((error as { responseCode?: unknown }).responseCode ?? 0)
+            : 0,
+      },
     });
   }
 }
