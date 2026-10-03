@@ -38,11 +38,11 @@ export async function sendCaptainRegistrationOtp(
   const transporter = getTransporter();
 
   await transporter.sendMail({
-    from: `"DZWAN" <${process.env.SMTP_USER}>`,
+    from: `"Zajel" <${process.env.SMTP_USER}>`,
     to,
-    subject: "رمز التحقق الخاص بك | DZWAN",
+    subject: "رمز التحقق الخاص بك | Zajel",
 
-    text: `مرحبًا بك في DZWAN
+    text: `مرحبًا بك في Zajel
 
 رمز التحقق الخاص بك هو:
 ${otp}
@@ -50,7 +50,7 @@ ${otp}
 صلاحية الرمز 10 دقائق.
 لا تشارك هذا الرمز مع أي شخص.
 
-فريق DZWAN`,
+فريق Zajel`,
 
     html: `
 <!DOCTYPE html>
@@ -58,7 +58,7 @@ ${otp}
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>تأكيد البريد الإلكتروني - DZWAN</title>
+  <title>تأكيد البريد الإلكتروني - Zajel</title>
 </head>
 
 <body style="
@@ -112,7 +112,7 @@ ${otp}
                 font-weight:800;
                 letter-spacing:2px;
               ">
-                DZWAN
+                Zajel
               </div>
 
               <div style="
@@ -147,7 +147,7 @@ ${otp}
                 font-size:26px;
                 color:#111827;
               ">
-                تأكيد حسابك في DZWAN
+                تأكيد حسابك في Zajel
               </h1>
 
               <p style="
@@ -231,7 +231,7 @@ ${otp}
                 font-size:13px;
                 color:#6b7280;
               ">
-                © ${new Date().getFullYear()} DZWAN
+                © ${new Date().getFullYear()} Zajel
               </div>
 
               <div style="
@@ -264,11 +264,11 @@ export async function sendEstablishmentRegistrationOtp(
   const transporter = getTransporter();
 
   await transporter.sendMail({
-    from: `"DZWAN" <${process.env.SMTP_USER}>`,
+    from: `"Zajel" <${process.env.SMTP_USER}>`,
     to,
-    subject: "رمز التحقق الخاص بك | DZWAN",
+    subject: "رمز التحقق الخاص بك | Zajel",
 
-    text: `مرحبًا بك في DZWAN
+    text: `مرحبًا بك في Zajel
 
 رمز التحقق الخاص بتسجيل المطعم/المحل هو:
 ${otp}
@@ -278,7 +278,7 @@ ${otp}
 
 ملاحظة: قد تصل رسالة التحقق إلى مجلد الرسائل غير المرغوب فيها (Spam).
 
-فريق DZWAN`,
+فريق Zajel`,
 
     html: `
 <!DOCTYPE html>
@@ -286,7 +286,7 @@ ${otp}
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>تأكيد البريد الإلكتروني - DZWAN</title>
+  <title>تأكيد البريد الإلكتروني - Zajel</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,Tahoma,sans-serif;color:#1f2937;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f7fa;padding:35px 15px;">
@@ -298,7 +298,7 @@ ${otp}
           <tr>
             <td align="center" style="padding:28px 20px;background:linear-gradient(135deg,#f59e0b,#f97316);">
               <div style="display:inline-block;padding:10px 18px;border:2px solid rgba(255,255,255,0.35);border-radius:14px;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:2px;">
-                DZWAN
+                Zajel
               </div>
               <div style="color:#fff7ed;font-size:14px;margin-top:10px;">
                 منصة التوصيل الخاصة بك
@@ -317,7 +317,7 @@ ${otp}
               </h1>
 
               <p style="margin:0 0 26px;line-height:1.9;font-size:15px;color:#6b7280;">
-                استخدم رمز التحقق التالي لإكمال عملية تسجيل نشاطك في DZWAN.
+                استخدم رمز التحقق التالي لإكمال عملية تسجيل نشاطك في Zajel.
                 لا تشارك هذا الرمز مع أي شخص.
               </p>
 
@@ -351,7 +351,7 @@ ${otp}
           <tr>
             <td style="padding:20px 25px;background:#f9fafb;border-top:1px solid #f1f5f9;text-align:center;">
               <div style="font-size:13px;color:#6b7280;">
-                © ${new Date().getFullYear()} DZWAN
+                © ${new Date().getFullYear()} Zajel
               </div>
               <div style="margin-top:5px;font-size:12px;color:#9ca3af;">
                 هذه رسالة تلقائية، يرجى عدم الرد عليها.
@@ -377,11 +377,11 @@ export async function sendPasswordResetOtp(
   const transporter = getTransporter();
 
   await transporter.sendMail({
-    from: `"DZWAN" <${process.env.SMTP_USER}>`,
+    from: `"Zajel" <${process.env.SMTP_USER}>`,
     to,
-    subject: "إعادة تعيين كلمة المرور | DZWAN",
+    subject: "إعادة تعيين كلمة المرور | Zajel",
 
-    text: `مرحبًا بك في DZWAN
+    text: `مرحبًا بك في Zajel
 
 رمز إعادة تعيين كلمة المرور هو:
 ${otp}
@@ -391,7 +391,7 @@ ${otp}
 
 ملاحظة: قد تصل رسالة التحقق إلى مجلد الرسائل غير المرغوب فيها (Spam).
 
-فريق DZWAN`,
+فريق Zajel`,
 
     html: `
 <!DOCTYPE html>
@@ -399,7 +399,7 @@ ${otp}
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>إعادة تعيين كلمة المرور - DZWAN</title>
+  <title>إعادة تعيين كلمة المرور - Zajel</title>
 </head>
 
 <body style="
@@ -440,7 +440,7 @@ ${otp}
     font-weight:800;
     letter-spacing:2px;
   ">
-    DZWAN
+    Zajel
   </div>
 
   <div style="
@@ -483,7 +483,7 @@ ${otp}
   font-size:15px;
   color:#6b7280;
 ">
-  تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك في DZWAN.
+  تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك في Zajel.
   استخدم الرمز التالي لإكمال العملية.
 </p>
 
@@ -564,7 +564,7 @@ ${otp}
   text-align:center;
 ">
   <div style="font-size:13px;color:#6b7280;">
-    © ${new Date().getFullYear()} DZWAN
+    © ${new Date().getFullYear()} Zajel
   </div>
 
   <div style="
@@ -596,11 +596,11 @@ export async function sendEmailChangeOtp(
   const transporter = getTransporter();
 
   await transporter.sendMail({
-    from: `"DZWAN" <${process.env.SMTP_USER}>`,
+    from: `"Zajel" <${process.env.SMTP_USER}>`,
     to,
-    subject: "تأكيد تغيير البريد الإلكتروني | DZWAN",
+    subject: "تأكيد تغيير البريد الإلكتروني | Zajel",
 
-    text: `مرحبًا بك في DZWAN
+    text: `مرحبًا بك في Zajel
 
 رمز تأكيد تغيير البريد الإلكتروني هو:
 ${otp}
@@ -608,7 +608,7 @@ ${otp}
 صلاحية الرمز 10 دقائق.
 لا تشارك هذا الرمز مع أي شخص.
 
-فريق DZWAN`,
+فريق Zajel`,
 
     html: `
 <!DOCTYPE html>
