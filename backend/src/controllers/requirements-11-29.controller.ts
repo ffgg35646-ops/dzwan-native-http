@@ -92,7 +92,7 @@ export async function shiftCheck(req: Request, res: Response) {
     return res.json({
       success: true, insideShift, canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
       start: shift.startTime, end: shift.endTime, shift, assignment,
-      canChangeShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
+
     });
   } catch (e) {
     return error(res, e);
