@@ -19,7 +19,7 @@ async function getCurrentCaptainShift(captainId: string) {
     shiftId: { $exists: true, $ne: null },
     isActive: true,
   })
-    .sort({ weekStart: -1, updatedAt: -1 })
+    .sort({ changedAt: -1, updatedAt: -1, weekStart: -1 })
     .lean();
 
   return assignment;
