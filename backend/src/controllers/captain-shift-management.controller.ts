@@ -276,11 +276,11 @@ export async function checkCurrentShift(
       isActive: true,
     }).sort({ weekStart: -1, updatedAt: -1 }).lean();
 
-    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+    if (!assignment?.shiftId) {
       return res.json({
         success: true, allowed: false, insideShift: false,
         canSelectNewShift: true, assignment: null, shift: null,
-        message: "انتهت مدة الشفت السابق أو لم يتم اختياره. يمكنك اختيار شفت جديد.",
+        message: "لم تختَر شفتًا بعد. يمكنك اختيار شفت.",
       });
     }
     const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true }).lean();
@@ -305,7 +305,7 @@ export async function checkCurrentShift(
 
     return res.json({
       success: true, allowed: insideShift, insideShift,
-      canSelectNewShift: false, assignment, shift,
+      canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now), assignment, shift,
       message: insideShift ? "أنت داخل وقت الشفت." : "تم اختيار الشفت، لكنك خارج وقت الشفت حاليًا.",
     });
   } catch (error: any) {
