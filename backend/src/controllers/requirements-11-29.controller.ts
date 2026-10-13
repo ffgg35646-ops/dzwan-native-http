@@ -11,7 +11,6 @@ import {
 import { OrderModel } from "../models/Order.js";
 import { EstablishmentModel } from "../models/Establishment.js";
 import {
-  assertWithinShift,
   assertCaptainCapacity,
   setCaptainOnline,
   clockIn,
@@ -137,18 +136,8 @@ export async function captainOnline(
     const online =
       String(req.body.online) === "true";
 
-    if (online) {
-      assertWithinShift(
-        String(
-          req.body.start ||
-          "16:00"
-        ),
-        String(
-          req.body.end ||
-          "00:00"
-        )
-      );
-    }
+    // Online/ready can be toggled at any time. Dispatch and order visibility
+    // independently enforce the saved shift's Baghdad day and working hours.
 
     const captain =
       await setCaptainOnline(
