@@ -3,17 +3,14 @@ import { Types } from "mongoose";
 import { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
+import { getBaghdadDayBounds } from "../services/captain-shift-management.service.js";
 
 function startOfToday() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
+  return getBaghdadDayBounds().start;
 }
 
 function endOfToday() {
-  const date = startOfToday();
-  date.setDate(date.getDate() + 1);
-  return date;
+  return getBaghdadDayBounds().end;
 }
 
 async function getCurrentCaptainShift(captainId: string) {
