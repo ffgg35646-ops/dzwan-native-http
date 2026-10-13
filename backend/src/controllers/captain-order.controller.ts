@@ -75,7 +75,9 @@ async function isCaptainInsideSelectedWeeklyShift(
       isActive: true,
     })
       .sort({
+        changedAt: -1,
         updatedAt: -1,
+        weekStart: -1,
       })
       .lean();
 
