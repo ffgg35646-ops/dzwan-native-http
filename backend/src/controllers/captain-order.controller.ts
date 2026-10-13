@@ -7,13 +7,13 @@ import { UserModel } from "../models/User.js";
 import { EstablishmentModel } from "../models/Establishment.js";
 import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
+import { isShiftRunning } from "../services/captain-shift-management.service.js";
 import {
   captainCanWorkNow,
 } from "../services/dispatch.service.js";
 import {
   getCaptainActiveOrders,
   getCaptainWorkAreas,
-  isWithinShift,
 } from "../services/requirements-11-29-runtime.service.js";
 import { saveCancellation } from "../services/ops-31-47.service.js";
 
@@ -97,15 +97,7 @@ async function isCaptainInsideSelectedWeeklyShift(
     return false;
   }
 
-  if (shift.isOpen === true) {
-    return true;
-  }
-
-  return isWithinShift(
-    String(shift.startTime),
-    String(shift.endTime),
-    now,
-  );
+  return isShiftRunning(String(shift.startTime), String(shift.endTime), now);
 }
 
 async function getCaptainScopeData(captainId: string) {
