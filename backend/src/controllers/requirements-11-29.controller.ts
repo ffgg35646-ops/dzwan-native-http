@@ -114,7 +114,7 @@ export async function weeklyShiftAssignment(req: any, res: any) {
     return res.json({
       assignment: { ...assignment, shiftId: shift || assignment.shiftId },
       shift: shift || null,
-      canSelectNewShift: false,
+      canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
     });
   } catch (error: any) {
     console.error("weeklyShiftAssignment error:", error);
