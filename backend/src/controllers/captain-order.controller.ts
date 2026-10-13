@@ -1,3 +1,4 @@
+import { isShiftRunning } from "../services/captain-shift-management.service.js";
 import mongoose, { Types } from "mongoose";
 import type { Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
@@ -97,15 +98,7 @@ async function isCaptainInsideSelectedWeeklyShift(
     return false;
   }
 
-  if (shift.isOpen === true) {
-    return true;
-  }
-
-  return isWithinShift(
-    String(shift.startTime),
-    String(shift.endTime),
-    now,
-  );
+  return isShiftRunning(String(shift.startTime), String(shift.endTime), now);
 }
 
 async function getCaptainScopeData(captainId: string) {
