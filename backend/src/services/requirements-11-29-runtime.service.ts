@@ -301,18 +301,7 @@ export async function autoCloseExpiredCaptainAttendance(
 
     await attendance.save();
 
-    await UserModel.updateOne(
-      {
-        _id: attendance.captainId,
-        role: "captain",
-      },
-      {
-        $set: {
-          isOnline: false,
-        },
-      }
-    );
-
+    // Closing a reporting record must not switch off the captain's order availability.
     closedCount += 1;
   }
 
