@@ -306,6 +306,7 @@ export async function checkCurrentShift(
     return res.json({
       success: true, allowed: insideShift, insideShift,
       canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now), assignment, shift,
+      nextChangeAt: new Date(new Date(assignment.weekStart ?? assignment.changedAt ?? assignment.createdAt ?? assignment.updatedAt).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       message: insideShift ? "أنت داخل وقت الشفت." : "تم اختيار الشفت، لكنك خارج وقت الشفت حاليًا.",
     });
   } catch (error: any) {
