@@ -277,7 +277,7 @@ export async function checkCurrentShift(
       captainId,
       shiftId: { $exists: true, $ne: null },
       isActive: true,
-    }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+    }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 }).lean();
 
     if (!assignment?.shiftId) {
       return res.json({
