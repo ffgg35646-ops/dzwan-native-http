@@ -122,19 +122,20 @@ export function getWeekStart(date = new Date()) {
 }
 
 function getShiftSelectionTimestamp(assignment: any): number {
-  // changedAt is written whenever a captain chooses/replaces a shift.
-  // Prefer it over legacy weekStart values that may be calendar-Monday dates.
-  const candidates = [
-    assignment?.changedAt,
-    assignment?.createdAt,
+  const explicitChange = new Date(assignment?.changedAt ?? NaN).getTime();
+  if (Number.isFinite(explicitChange)) return explicitChange;
+
+  // Legacy assignments may have only weekStart/createdAt/updatedAt.
+  // Use the most recent valid timestamp so a legacy calendar-week value
+  // does not keep the lock closed longer than intended.
+  const fallbacks = [
     assignment?.weekStart,
+    assignment?.createdAt,
     assignment?.updatedAt,
-  ];
-  for (const value of candidates) {
-    const timestamp = new Date(value ?? NaN).getTime();
-    if (Number.isFinite(timestamp)) return timestamp;
-  }
-  return NaN;
+  ]
+    .map((value) => new Date(value ?? NaN).getTime())
+    .filter((value) => Number.isFinite(value));
+  return fallbacks.length ? Math.max(...fallbacks) : NaN;
 }
 
 export function getNextShiftChangeAt(assignment: any): Date | null {
