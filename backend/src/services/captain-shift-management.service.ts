@@ -59,13 +59,27 @@ function getBaghdadParts(date = new Date()) {
   return value;
 }
 
+export function getBaghdadDayBounds(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BAGHDAD_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value: Record<string, number> = {};
+  for (const part of parts) {
+    if (part.type === "year" || part.type === "month" || part.type === "day") {
+      value[part.type] = Number(part.value);
+    }
+  }
+  // Baghdad's civil day currently begins at 21:00 UTC on the preceding date.
+  const start = new Date(Date.UTC(value.year, value.month - 1, value.day, -3, 0, 0, 0));
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
 export function getBaghdadMinutes(date = new Date()) {
   const parts = getBaghdadParts(date);
-
-  return (
-    Number(parts.hour || 0) * 60 +
-    Number(parts.minute || 0)
-  );
+  return Number(parts.hour || 0) * 60 + Number(parts.minute || 0);
 }
 
 export function getWeekStart(date = new Date()) {
