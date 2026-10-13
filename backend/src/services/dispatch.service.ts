@@ -7,7 +7,6 @@ import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainWorkAreaModel } from "../models/CaptainWorkArea.js";
 import { LocationModel } from "../models/Location.js";
 import { CaptainLocationModel } from "../models/CaptainLocation.js";
-import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { rankDispatchCandidates } from "./smart-dispatch-score.service.js";
 
 interface DispatchCandidate {
@@ -56,127 +55,16 @@ function distanceKm(
   );
 }
 
-function minutes(value: string): number {
-  const [hour, minute] = value.split(":").map(Number);
+import { isShiftRunning } from "./captain-shift-management.service.js";
 
-  if (
-    !Number.isFinite(hour) ||
-    !Number.isFinite(minute)
-  ) {
-    return -1;
-  }
-
-  return hour * 60 + minute;
-}
-
-function isInsideShift(
-  startTime: string,
-  endTime: string,
-): boolean {
-  const now = new Date();
-
-  const current =
-    now.getHours() * 60 + now.getMinutes();
-
-  const start = minutes(startTime);
-  const end = minutes(endTime);
-
-  if (start < 0 || end < 0) {
-    return false;
-  }
-
-  if (start === end) {
-    return true;
-  }
-
-  if (start < end) {
-    return current >= start && current < end;
-  }
-
-  return current >= start || current < end;
-}
-
-async function captainHasActiveShift(
-  captainId: Types.ObjectId,
-): Promise<boolean> {
-  const now = new Date();
-
-  const weekStart = new Date(now);
-  const day = weekStart.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-
-  weekStart.setDate(
-    weekStart.getDate() + diff,
-  );
-  weekStart.setHours(0, 0, 0, 0);
-
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(
-    weekEnd.getDate() + 7,
-  );
-
-  const assignment =
-    await CaptainShiftModel.findOne({
-      captainId,
-      shiftId: { $exists: true },
-      weekStart: {
-        $gte: weekStart,
-        $lt: weekEnd,
-      },
-    })
-      .select("shiftId")
-      .lean();
-
-  if (!assignment?.shiftId) {
-    return false;
-  }
-
-  const shift =
-    await CaptainShiftModel.findOne({
-      _id: assignment.shiftId,
-      isActive: true,
-    })
-      .select("startTime endTime isOpen")
-      .lean();
-
-  if (!shift) {
-    return false;
-  }
-
-  if (shift.isOpen === true) {
-    return true;
-  }
-
-  return isInsideShift(
-    String(shift.startTime),
-    String(shift.endTime),
-  );
-}
-
-async function captainHasTodayAttendance(
-  captainId: Types.ObjectId,
-): Promise<boolean> {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-
-  const attendance =
-    await CaptainAttendanceModel.findOne({
-      captainId,
-      date: {
-        $gte: start,
-        $lt: end,
-      },
-      clockInAt: {
-        $ne: null,
-      },
-    })
-      .select("_id")
-      .lean();
-
-  return Boolean(attendance);
+async function captainHasActiveShift(captainId: Types.ObjectId): Promise<boolean> {
+  const assignment = await CaptainShiftModel.findOne({
+    captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
+  }).sort({ weekStart: -1, updatedAt: -1 }).select("shiftId").lean();
+  if (!assignment?.shiftId) return false;
+  const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true })
+    .select("startTime endTime").lean();
+  return Boolean(shift && isShiftRunning(String(shift.startTime), String(shift.endTime)));
 }
 
 export async function findBestCaptain(
@@ -429,15 +317,9 @@ export async function findBestCaptain(
         continue;
       }
 
-      const hasTodayAttendance =
-        await captainHasTodayAttendance(
-          captain._id,
-        );
-
-      if (!hasTodayAttendance) {
-        continue;
-      }
     }
+
+    const captainLocation =    }
 
     const captainLocation =
       locationMap.get(String(captain._id));
