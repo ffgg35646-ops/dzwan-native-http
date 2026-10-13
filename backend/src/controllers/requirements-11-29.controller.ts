@@ -73,7 +73,7 @@ export async function shiftCheck(req: Request, res: Response) {
     }
 
     const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true })
-      .select("_id name startTime endTime isActive").lean();
+      .select("_id name startTime endTime isActive dayOfWeek").lean();
     if (!shift) {
       return res.status(200).json({
         success: true, insideShift: false, canSelectNewShift: true,
