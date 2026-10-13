@@ -105,7 +105,7 @@ export async function weeklyShiftAssignment(req: any, res: any) {
     const now = new Date();
     const assignment = await CaptainShiftModel.findOne({
       captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
-    }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+    }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 }).lean();
     if (!assignment?.shiftId) {
       return res.json({ assignment: null, shift: null, canSelectNewShift: true });
     }
