@@ -107,19 +107,37 @@ export function getWeekStart(date = new Date()) {
   );
 }
 
+function getShiftSelectionTimestamp(assignment: any): number {
+  // changedAt is written whenever a captain chooses/replaces a shift.
+  // Prefer it over legacy weekStart values that may be calendar-Monday dates.
+  const candidates = [
+    assignment?.changedAt,
+    assignment?.createdAt,
+    assignment?.weekStart,
+    assignment?.updatedAt,
+  ];
+  for (const value of candidates) {
+    const timestamp = new Date(value ?? NaN).getTime();
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return NaN;
+}
+
+export function getNextShiftChangeAt(assignment: any): Date | null {
+  if (!assignment) return null;
+  const selectedAt = getShiftSelectionTimestamp(assignment);
+  return Number.isFinite(selectedAt)
+    ? new Date(selectedAt + 7 * 24 * 60 * 60 * 1000)
+    : null;
+}
+
+// This helper represents the change-lock only. It does not expire the selected shift.
 export function isWeeklyShiftAssignmentCurrent(
   assignment: any,
   now = new Date(),
 ) {
-  if (!assignment) return false;
-  const selectedAtValue =
-    assignment.weekStart ??
-    assignment.changedAt ??
-    assignment.createdAt ??
-    assignment.updatedAt;
-  const selectedAt = new Date(selectedAtValue ?? NaN).getTime();
-  return Number.isFinite(selectedAt) &&
-    now.getTime() < selectedAt + 7 * 24 * 60 * 60 * 1000;
+  const unlockAt = getNextShiftChangeAt(assignment);
+  return Boolean(unlockAt && now.getTime() < unlockAt.getTime());
 }
 
 export async function createCaptainShift(input: {
@@ -284,39 +302,42 @@ export async function changeCaptainWeeklyShiftOnce(captainId: string, newShiftId
 export function isShiftRunning(
   startTime: string,
   endTime: string,
-  now = new Date()
+  now = new Date(),
+  dayOfWeek?: number | string | null,
 ) {
   const toMinutes = (value: string) => {
-    const [h, m] =
-      value.split(":").map(Number);
-
-    return h * 60 + m;
+    if (!/^\\d{1,2}:\\d{2}$/.test(String(value))) return NaN;
+    const [h, m] = String(value).split(":").map(Number);
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59 ? h * 60 + m : NaN;
   };
+  const start = toMinutes(startTime);
+  const end = toMinutes(endTime);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
 
-  const start =
-    toMinutes(startTime);
-
-  const end =
-    toMinutes(endTime);
-
-  const current =
-    getBaghdadMinutes(now);
-
-  if (start === end) {
-    return true;
+  if (dayOfWeek !== null && dayOfWeek !== undefined && String(dayOfWeek).trim() !== "") {
+    const weekdayName = new Intl.DateTimeFormat("en-US", {
+      timeZone: BAGHDAD_TIME_ZONE,
+      weekday: "long",
+    }).format(now).toLowerCase();
+    const weekdayIndex: Record<string, number> = {
+      sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+      thursday: 4, friday: 5, saturday: 6,
+    };
+    const expectedDay = Number.isInteger(Number(dayOfWeek))
+      ? Number(dayOfWeek)
+      : weekdayIndex[String(dayOfWeek).toLowerCase()];
+    if (
+      !Number.isInteger(expectedDay) ||
+      expectedDay < 0 ||
+      expectedDay > 6 ||
+      weekdayIndex[weekdayName] !== expectedDay
+    ) return false;
   }
 
-  if (start < end) {
-    return (
-      current >= start &&
-      current < end
-    );
-  }
-
-  return (
-    current >= start ||
-    current < end
-  );
+  const current = getBaghdadMinutes(now);
+  if (start === end) return true;
+  if (start < end) return current >= start && current < end;
+  return current >= start || current < end;
 }
 
 export async function assertCaptainInsideShift(
