@@ -4,8 +4,8 @@ import { LocationModel } from "../models/Location.js";
 import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
 import {
-  isWeeklyShiftAssignmentCurrent,
   getBaghdadMinutes,
+  isShiftRunning,
 } from "../services/captain-shift-management.service.js";
 import { OrderModel } from "../models/Order.js";
 import { EstablishmentModel } from "../models/Establishment.js";
@@ -64,11 +64,11 @@ export async function shiftCheck(req: Request, res: Response) {
       captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
     }).sort({ weekStart: -1, updatedAt: -1 }).lean();
 
-    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+    if (!assignment?.shiftId) {
       return res.status(200).json({
         success: true, insideShift: false, canSelectNewShift: true,
         start: null, end: null, shift: null, assignment: null,
-        message: "انتهت مدة الشفت السابق أو لم يتم اختياره. يمكنك اختيار شفت جديد.",
+        message: "لم يتم اختيار شفت بعد. يمكنك اختيار شفت.",
       });
     }
 
@@ -90,7 +90,7 @@ export async function shiftCheck(req: Request, res: Response) {
       ? current >= start && current < end
       : current >= start || current < end;
     return res.json({
-      success: true, insideShift, canSelectNewShift: false,
+      success: true, insideShift, canSelectNewShift: Boolean(assignment.weekStart && now.getTime() >= new Date(assignment.weekStart).getTime() + 7 * 86400000),
       start: shift.startTime, end: shift.endTime, shift, assignment,
     });
   } catch (e) {
