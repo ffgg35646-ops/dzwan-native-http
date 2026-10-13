@@ -5,12 +5,12 @@ import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
 import {
   isWeeklyShiftAssignmentCurrent,
-  getBaghdadMinutes,
+  getNextShiftChangeAt,
+  isShiftRunning,
 } from "../services/captain-shift-management.service.js";
 import { OrderModel } from "../models/Order.js";
 import { EstablishmentModel } from "../models/Establishment.js";
 import {
-  assertWithinShift,
   assertCaptainCapacity,
   setCaptainOnline,
   clockIn,
@@ -62,7 +62,7 @@ export async function shiftCheck(req: Request, res: Response) {
     const now = new Date();
     const assignment = await CaptainShiftModel.findOne({
       captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
-    }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+    }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 }).lean();
 
     if (!assignment?.shiftId) {
       return res.status(200).json({
@@ -73,7 +73,7 @@ export async function shiftCheck(req: Request, res: Response) {
     }
 
     const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true })
-      .select("_id name startTime endTime isActive").lean();
+      .select("_id name startTime endTime isActive dayOfWeek").lean();
     if (!shift) {
       return res.status(200).json({
         success: true, insideShift: false, canSelectNewShift: true,
@@ -81,17 +81,16 @@ export async function shiftCheck(req: Request, res: Response) {
         message: "الشفت السابق غير فعال. يمكنك اختيار شفت آخر.",
       });
     }
-    const current = getBaghdadMinutes(now);
-    const [startHour, startMinute] = String(shift.startTime).split(":").map(Number);
-    const [endHour, endMinute] = String(shift.endTime).split(":").map(Number);
-    const start = startHour * 60 + startMinute;
-    const end = endHour * 60 + endMinute;
-    const insideShift = start === end ? true : start < end
-      ? current >= start && current < end
-      : current >= start || current < end;
+    const insideShift = isShiftRunning(
+      String(shift.startTime),
+      String(shift.endTime),
+      now,
+      (shift as any).dayOfWeek,
+    );
     return res.json({
       success: true, insideShift, canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
       start: shift.startTime, end: shift.endTime, shift, assignment,
+      nextChangeAt: getNextShiftChangeAt(assignment)?.toISOString() ?? null,
 
     });
   } catch (e) {
@@ -106,7 +105,7 @@ export async function weeklyShiftAssignment(req: any, res: any) {
     const now = new Date();
     const assignment = await CaptainShiftModel.findOne({
       captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
-    }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+    }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 }).lean();
     if (!assignment?.shiftId) {
       return res.json({ assignment: null, shift: null, canSelectNewShift: true });
     }
@@ -115,6 +114,7 @@ export async function weeklyShiftAssignment(req: any, res: any) {
       assignment: { ...assignment, shiftId: shift || assignment.shiftId },
       shift: shift || null,
       canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
+      nextChangeAt: getNextShiftChangeAt(assignment)?.toISOString() ?? null,
     });
   } catch (error: any) {
     console.error("weeklyShiftAssignment error:", error);
@@ -136,18 +136,8 @@ export async function captainOnline(
     const online =
       String(req.body.online) === "true";
 
-    if (online) {
-      assertWithinShift(
-        String(
-          req.body.start ||
-          "16:00"
-        ),
-        String(
-          req.body.end ||
-          "00:00"
-        )
-      );
-    }
+    // Online/ready can be toggled at any time. Dispatch and order visibility
+    // independently enforce the saved shift's Baghdad day and working hours.
 
     const captain =
       await setCaptainOnline(

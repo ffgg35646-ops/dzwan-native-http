@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
-import { getBaghdadMinutes } from "./captain-shift-management.service.js";
+import { getBaghdadMinutes, getBaghdadDayBounds } from "./captain-shift-management.service.js";
 import { CaptainWorkAreaModel } from "../models/CaptainWorkArea.js";
 import { applyDefaultCoverage } from "./captain-coverage.service.js";
 import CaptainCashTransactionModel from "../models/CaptainCashTransaction.js";
@@ -134,92 +134,64 @@ export async function setCaptainOnline(
   return captain;
 }
 
-export async function clockIn(
-  captainId: string
-) {
+export async function clockIn(captainId: string) {
   const captainObjectId = new mongoose.Types.ObjectId(captainId);
   const now = new Date();
+  const { start: date, end: nextDay } = getBaghdadDayBounds(now);
 
-  // Attendance is independent of shift selection and shift hours.
-  // Attach a shift only as optional reporting metadata when available.
+  // Attendance is for reporting only: no shift or time check gates check-in.
   const candidateAssignment = await CaptainShiftModel.findOne({
     captainId: captainObjectId,
     shiftId: { $exists: true, $ne: null },
     isActive: true,
-  })
-    .sort({ weekStart: -1, updatedAt: -1 })
-    .catch(() => null);
-  const assignment = candidateAssignment;
+  }).sort({ weekStart: -1, updatedAt: -1 }).catch(() => null);
 
-  const date = new Date(now);
-  date.setHours(0, 0, 0, 0);
   const existing = await CaptainAttendanceModel.findOne({
+    captainId: captainObjectId,
+    date: { $gte: date, $lt: nextDay },
+  });
+
+  if (existing?.clockInAt) throw new Error("ALREADY_CLOCKED_IN");
+
+  const attendance = existing ?? new CaptainAttendanceModel({
     captainId: captainObjectId,
     date,
   });
-  if (existing?.clockInAt) {
-    throw new Error("ALREADY_CLOCKED_IN");
-  }
-
-  const attendance = await CaptainAttendanceModel.findOneAndUpdate(
-    { captainId: captainObjectId, date },
-    {
-      $set: {
-        shiftId: assignment?.shiftId ?? null,
-        clockInAt: now,
-        status: "present",
-      },
-    },
-    { upsert: true, new: true }
-  );
+  attendance.shiftId = candidateAssignment?.shiftId ?? null;
+  attendance.clockInAt = now;
+  attendance.clockOutAt = null;
+  attendance.durationMinutes = 0;
+  attendance.status = "present";
+  await attendance.save();
 
   await UserModel.updateOne(
     { _id: captainObjectId, role: "captain" },
-    { $set: { isOnline: true } }
+    { $set: { isOnline: true } },
   );
 
   return attendance;
 }
 
-export async function clockOut(
-  captainId: string
-) {
-  const date = new Date();
-  date.setHours(0,0,0,0);
-
-  const attendance =
-    await CaptainAttendanceModel.findOne({
-      captainId,
-      date,
-    });
-
-  if (!attendance?.clockInAt) {
-    throw new Error("NOT_CLOCKED_IN");
-  }
-
-  if (attendance.clockOutAt) {
-    return attendance;
-  }
-
+export async function clockOut(captainId: string) {
   const now = new Date();
+  const { start: date, end: nextDay } = getBaghdadDayBounds(now);
+  const attendance = await CaptainAttendanceModel.findOne({
+    captainId: new mongoose.Types.ObjectId(captainId),
+    date: { $gte: date, $lt: nextDay },
+  });
+
+  if (!attendance?.clockInAt) throw new Error("NOT_CLOCKED_IN");
+  if (attendance.clockOutAt) return attendance;
 
   attendance.clockOutAt = now;
-  attendance.durationMinutes =
-    Math.max(
-      0,
-      Math.floor(
-        (now.getTime() -
-          attendance.clockInAt.getTime()) /
-          60000
-      )
-    );
+  attendance.durationMinutes = Math.max(
+    0,
+    Math.floor((now.getTime() - new Date(attendance.clockInAt).getTime()) / 60000),
+  );
   attendance.status = "closed";
-
   await attendance.save();
-
   return attendance;
 }
-
 
 export async function autoCloseExpiredCaptainAttendance(
   now = new Date(),
@@ -260,21 +232,14 @@ export async function autoCloseExpiredCaptainAttendance(
     const endMinutes =
       toMinutes(String(shift.endTime));
 
-    const endAt = new Date(attendance.date);
-    endAt.setHours(0, 0, 0, 0);
-
+    const dayStart = getBaghdadDayBounds(new Date(attendance.date)).start;
     const endDayOffset =
       endMinutes <= startMinutes ? 1 : 0;
 
-    endAt.setDate(
-      endAt.getDate() + endDayOffset,
-    );
-
-    endAt.setHours(
-      Math.floor(endMinutes / 60),
-      endMinutes % 60,
-      0,
-      0,
+    // Calculate shift end from Baghdad midnight instead of the server's local timezone.
+    const endAt = new Date(
+      dayStart.getTime() +
+      (endDayOffset * 24 * 60 + endMinutes) * 60 * 1000,
     );
 
     if (now.getTime() < endAt.getTime()) {

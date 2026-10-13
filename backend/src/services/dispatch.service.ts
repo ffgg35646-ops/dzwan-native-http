@@ -56,54 +56,14 @@ function distanceKm(
   );
 }
 
-function minutes(value: string): number {
-  const [hour, minute] = value.split(":").map(Number);
-
-  if (
-    !Number.isFinite(hour) ||
-    !Number.isFinite(minute)
-  ) {
-    return -1;
-  }
-
-  return hour * 60 + minute;
-}
-
-function isInsideShift(
-  startTime: string,
-  endTime: string,
-): boolean {
-  const now = new Date();
-
-  const current =
-    now.getHours() * 60 + now.getMinutes();
-
-  const start = minutes(startTime);
-  const end = minutes(endTime);
-
-  if (start < 0 || end < 0) {
-    return false;
-  }
-
-  if (start === end) {
-    return true;
-  }
-
-  if (start < end) {
-    return current >= start && current < end;
-  }
-
-  return current >= start || current < end;
-}
-
 async function captainHasActiveShift(captainId: Types.ObjectId): Promise<boolean> {
   const assignment = await CaptainShiftModel.findOne({
     captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
-  }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+  }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 }).lean();
   if (!assignment?.shiftId) return false;
   const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true }).lean();
   if (!shift) return false;
-  return isShiftRunning(String(shift.startTime), String(shift.endTime));
+  return isShiftRunning(String(shift.startTime), String(shift.endTime), new Date(), (shift as any).dayOfWeek);
 }
 
 export async function findBestCaptain(
@@ -455,10 +415,6 @@ export async function findBestCaptain(
 export async function captainCanWorkNow(
   captainId: Types.ObjectId,
 ): Promise<boolean> {
-  const settings =
-    await DispatchSettingsModel.findOne()
-      .lean();
-
   // Selected shift and Baghdad working hours are mandatory; attendance is not.
   return captainHasActiveShift(captainId);
 }
