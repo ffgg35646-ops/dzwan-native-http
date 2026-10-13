@@ -8,6 +8,7 @@ import { CaptainWorkAreaModel } from "../models/CaptainWorkArea.js";
 import { LocationModel } from "../models/Location.js";
 import { CaptainLocationModel } from "../models/CaptainLocation.js";
 import { rankDispatchCandidates } from "./smart-dispatch-score.service.js";
+import { isShiftRunning } from "./captain-shift-management.service.js";
 
 interface DispatchCandidate {
   captainId: Types.ObjectId;
@@ -55,7 +56,7 @@ function distanceKm(
   );
 }
 
-import { isShiftRunning } from "./captain-shift-management.service.js";
+
 
 async function captainHasActiveShift(captainId: Types.ObjectId): Promise<boolean> {
   const assignment = await CaptainShiftModel.findOne({
@@ -318,8 +319,6 @@ export async function findBestCaptain(
       }
 
     }
-
-    const captainLocation =    }
 
     const captainLocation =
       locationMap.get(String(captain._id));
