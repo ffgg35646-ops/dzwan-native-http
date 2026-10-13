@@ -8,7 +8,6 @@ import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainWorkAreaModel } from "../models/CaptainWorkArea.js";
 import { LocationModel } from "../models/Location.js";
 import { CaptainLocationModel } from "../models/CaptainLocation.js";
-import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { rankDispatchCandidates } from "./smart-dispatch-score.service.js";
 
 interface DispatchCandidate {
@@ -347,7 +346,7 @@ export async function findBestCaptain(
       continue;
     }
 
-    if (settings.requireCaptainShift) {
+    { // Shift is mandatory for captain dispatch regardless of optional settings.
       const insideShift =
         await captainHasActiveShift(
           captain._id,
