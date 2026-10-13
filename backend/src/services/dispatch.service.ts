@@ -308,7 +308,7 @@ export async function findBestCaptain(
       continue;
     }
 
-    if (settings.requireCaptainShift) {
+    {
       const insideShift =
         await captainHasActiveShift(
           captain._id,
@@ -420,10 +420,6 @@ export async function captainCanWorkNow(
   const settings =
     await DispatchSettingsModel.findOne()
       .lean();
-
-  if (!settings?.requireCaptainShift) {
-    return true;
-  }
 
   return captainHasActiveShift(captainId);
 }
