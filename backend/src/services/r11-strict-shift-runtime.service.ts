@@ -1,3 +1,4 @@
+import { isShiftRunning } from "./captain-shift-management.service.js";
 
 import { CaptainShiftModel } from "../models/CaptainShift.js";
 
@@ -63,122 +64,17 @@ function getCurrentDayIndex(date: Date): number {
   return date.getDay();
 }
 
-export async function checkStrictShift(
-  captainId: string,
-  date = new Date(),
-): Promise<StrictShiftResult> {
-  const dayIndex = getCurrentDayIndex(date);
-
-  const shifts = await CaptainShiftModel.find({
-    captainId,
-    isActive: true,
-  }).lean();
-
-  if (!shifts.length) {
-    return {
-      allowed: false,
-      reason: "NO_SHIFT",
-    };
-  }
-
-  const nowMinutes =
-    date.getHours() * 60 +
-    date.getMinutes();
-
-  for (const assignment of shifts) {
-    // CaptainShift يحتوي على نوعين من السجلات:
-    // 1) تعريف الشفت نفسه.
-    // 2) تعيين الشفت للكابتن ويحتوي على shiftId.
-    // عند وجود shiftId نقرأ تعريف الشفت الحقيقي.
-    const shift =
-      (assignment as any).shiftId
-        ? await CaptainShiftModel.findById(
-            (assignment as any).shiftId,
-          ).lean()
-        : assignment;
-
-    if (!shift) {
-      continue;
-    }
-
-    // الشفت المفتوح لا يعتمد على اليوم أو الوقت.
-    if ((shift as any).isOpen === true) {
-      return {
-        allowed: true,
-        reason: "IN_SHIFT",
-        shiftId: String(shift._id),
-      };
-    }
-
-    const rawShiftDay =
-      (shift as any).dayOfWeek ??
-      (shift as any).day ??
-      null;
-
-    if (
-      rawShiftDay !== null &&
-      rawShiftDay !== undefined &&
-      rawShiftDay !== ""
-    ) {
-      const numericShiftDay = Number(rawShiftDay);
-
-      if (Number.isInteger(numericShiftDay)) {
-        if (numericShiftDay !== dayIndex) {
-          continue;
-        }
-      } else {
-        const names = [
-          "sunday",
-          "monday",
-          "tuesday",
-          "wednesday",
-          "thursday",
-          "friday",
-          "saturday",
-        ];
-
-        if (
-          String(rawShiftDay).toLowerCase() !==
-          names[dayIndex]
-        ) {
-          continue;
-        }
-      }
-    }
-
-    const start =
-      String(
-        (shift as any).startTime ??
-        (shift as any).start ??
-        "",
-      );
-
-    const end =
-      String(
-        (shift as any).endTime ??
-        (shift as any).end ??
-        "",
-      );
-
-    if (
-      isInsideShift(
-        nowMinutes,
-        start,
-        end,
-      )
-    ) {
-      return {
-        allowed: true,
-        reason: "IN_SHIFT",
-        shiftId: String(shift._id),
-      };
-    }
-  }
-
-  return {
-    allowed: false,
-    reason: "OUTSIDE_SHIFT",
-  };
+// The selected assignment remains valid until replaced; the seven-day period only locks changes.
+// Never use server-local hours or the attendance button to gate dispatch.
+export async function checkStrictShift(captainId: string, date = new Date()): Promise<StrictShiftResult> {
+  const assignment = await CaptainShiftModel.findOne({
+    captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
+  }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+  if (!assignment?.shiftId) return { allowed: false, reason: "NO_SHIFT" };
+  const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true }).lean();
+  if (!shift) return { allowed: false, reason: "NO_SHIFT" };
+  const allowed = isShiftRunning(String(shift.startTime), String(shift.endTime), date);
+  return { allowed, reason: allowed ? "IN_SHIFT" : "OUTSIDE_SHIFT", shiftId: String(shift._id) };
 }
 
 export async function assertCaptainInsideShift(
