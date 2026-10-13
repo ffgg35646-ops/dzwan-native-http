@@ -107,6 +107,21 @@ export function getWeekStart(date = new Date()) {
   );
 }
 
+export function isWeeklyShiftAssignmentCurrent(
+  assignment: any,
+  now = new Date(),
+) {
+  if (!assignment) return false;
+  const selectedAtValue =
+    assignment.weekStart ??
+    assignment.changedAt ??
+    assignment.createdAt ??
+    assignment.updatedAt;
+  const selectedAt = new Date(selectedAtValue ?? NaN).getTime();
+  return Number.isFinite(selectedAt) &&
+    now.getTime() < selectedAt + 7 * 24 * 60 * 60 * 1000;
+}
+
 export async function createCaptainShift(input: {
   name: string;
   dayOfWeek?: number;
@@ -159,9 +174,9 @@ export async function updateCaptainShift(
   const shift =
     await CaptainShiftModel.findOne({
       _id: objectId(shiftId),
-      captainId: { $exists: false },
-      shiftId: { $exists: false },
-      weekStart: { $exists: false },
+      captainId: { $in: [null] },
+      shiftId: { $in: [null] },
+      weekStart: { $in: [null] },
     });
 
   if (!shift) {
@@ -220,9 +235,9 @@ export async function assignCaptainWeeklyShift(
   const shift = await CaptainShiftModel.findOne({
     _id: shiftObjectId,
     isActive: true,
-    captainId: { $exists: false },
-    shiftId: { $exists: false },
-    weekStart: { $exists: false },
+    captainId: { $in: [null] },
+    shiftId: { $in: [null] },
+    weekStart: { $in: [null] },
   });
 
   if (!shift) {
@@ -230,32 +245,23 @@ export async function assignCaptainWeeklyShift(
   }
 
   const start = new Date(weekStart || new Date());
-  start.setMilliseconds(0);
 
   const previousAssignment =
     await CaptainShiftModel.findOne({
       captainId: captainObjectId,
-      shiftId: { $exists: true },
-    }).sort({ weekStart: -1 });
+      shiftId: { $exists: true, $ne: null },
+    }).sort({ weekStart: -1, updatedAt: -1 });
 
-  if (previousAssignment?.weekStart) {
-    const expiresAt =
-      new Date(previousAssignment.weekStart).getTime() +
-      7 * 24 * 60 * 60 * 1000;
-
-    if (start.getTime() < expiresAt) {
-      throw new Error(
-        "SHIFT_ALREADY_SELECTED_THIS_WEEK"
-      );
+  if (previousAssignment) {
+    if (isWeeklyShiftAssignmentCurrent(previousAssignment, start)) {
+      throw new Error("SHIFT_ALREADY_SELECTED_THIS_WEEK");
     }
-
     previousAssignment.shiftId = shiftObjectId;
     previousAssignment.weekStart = start;
     previousAssignment.changedAt = new Date();
     previousAssignment.changeCount = 0;
     previousAssignment.isActive = true;
     previousAssignment.isOpen = true;
-
     return previousAssignment.save();
   }
 
@@ -289,7 +295,7 @@ export async function changeCaptainWeeklyShiftOnce(
   const assignment =
     await CaptainShiftModel.findOne({
       captainId: captainObjectId,
-      shiftId: { $exists: true },
+      shiftId: { $exists: true, $ne: null },
       weekStart: {
         $gt: windowStart,
         $lte: now,
@@ -316,9 +322,9 @@ export async function changeCaptainWeeklyShiftOnce(
     await CaptainShiftModel.findOne({
       _id: shiftObjectId,
       isActive: true,
-      captainId: { $exists: false },
-      shiftId: { $exists: false },
-      weekStart: { $exists: false },
+      captainId: { $in: [null] },
+      shiftId: { $in: [null] },
+      weekStart: { $in: [null] },
     });
 
   if (!shift) {
@@ -402,60 +408,22 @@ export async function assertCaptainInsideShift(
   captainId: string,
   now = new Date()
 ) {
-  const captainObjectId =
-    objectId(captainId);
+  const captainObjectId = objectId(captainId);
+  const assignment = await CaptainShiftModel.findOne({
+    captainId: captainObjectId,
+    shiftId: { $exists: true, $ne: null },
+    isActive: true,
+  }).sort({ weekStart: -1, updatedAt: -1 });
 
-  const start =
-    getWeekStart(now);
-
-  const end =
-    new Date(start);
-
-  end.setDate(
-    end.getDate() + 7
-  );
-
-  const assignment =
-    await CaptainShiftModel.findOne({
-      captainId: captainObjectId,
-      shiftId: { $exists: true },
-      weekStart: {
-        $gte: start,
-        $lt: end,
-      },
-    });
-
-  if (!assignment) {
-    throw new Error(
-      "CAPTAIN_HAS_NO_WEEKLY_SHIFT"
-    );
+  if (!assignment || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+    throw new Error("CAPTAIN_HAS_NO_WEEKLY_SHIFT");
   }
-
-  const shift =
-    await CaptainShiftModel.findById(
-      (assignment as any).shiftId
-    );
-
+  const shift = await CaptainShiftModel.findById((assignment as any).shiftId);
   if (!shift || !(shift as any).isActive) {
-    throw new Error(
-      "CAPTAIN_SHIFT_INACTIVE"
-    );
+    throw new Error("CAPTAIN_SHIFT_INACTIVE");
   }
-
-  if (
-    !isShiftRunning(
-      String((shift as any).startTime),
-      String((shift as any).endTime),
-      now
-    )
-  ) {
-    throw new Error(
-      "CAPTAIN_OUTSIDE_SHIFT"
-    );
+  if (!isShiftRunning(String((shift as any).startTime), String((shift as any).endTime), now)) {
+    throw new Error("CAPTAIN_OUTSIDE_SHIFT");
   }
-
-  return {
-    assignment,
-    shift,
-  };
+  return { assignment, shift };
 }

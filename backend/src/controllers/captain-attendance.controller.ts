@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
+import { isWeeklyShiftAssignmentCurrent } from "../services/captain-shift-management.service.js";
 
 function startOfToday() {
   const date = new Date();
@@ -17,19 +18,17 @@ function endOfToday() {
 }
 
 async function getCurrentCaptainShift(captainId: string) {
-  // Match the active assignment returned by /captain-shifts/current/check.
-  // Do not reject a selected shift solely because its assignment timestamp
-  // is older than seven days; shift changes are managed separately.
-  return CaptainShiftModel.findOne({
+  const assignment = await CaptainShiftModel.findOne({
     captainId: new Types.ObjectId(captainId),
-    shiftId: {
-      $exists: true,
-      $ne: null,
-    },
+    shiftId: { $exists: true, $ne: null },
     isActive: true,
   })
-    .sort({ updatedAt: -1 })
+    .sort({ weekStart: -1, updatedAt: -1 })
     .lean();
+
+  return isWeeklyShiftAssignmentCurrent(assignment, new Date())
+    ? assignment
+    : null;
 }
 
 function attendanceRow(item: any) {
