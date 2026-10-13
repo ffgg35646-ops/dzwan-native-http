@@ -3,6 +3,10 @@ import { Types } from "mongoose";
 import { LocationModel } from "../models/Location.js";
 import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
+import {
+  isWeeklyShiftAssignmentCurrent,
+  getBaghdadMinutes,
+} from "../services/captain-shift-management.service.js";
 import { OrderModel } from "../models/Order.js";
 import { EstablishmentModel } from "../models/Establishment.js";
 import {
@@ -51,184 +55,71 @@ function error(res: Response, e: any) {
   });
 }
 
-export async function shiftCheck(
-  req: Request,
-  res: Response
-) {
+export async function shiftCheck(req: Request, res: Response) {
   try {
-    const captainId =
-      String((req as any).user?.sub || "");
-
-    if (!captainId) {
-      return res.status(401).json({
-        success: false,
-        error: "غير مصرح.",
-      });
-    }
-
+    const captainId = String((req as any).user?.sub || "");
+    if (!captainId) return res.status(401).json({ success: false, error: "غير مصرح." });
     const now = new Date();
-
-    const {
-      getWeekStart,
-    } = await import("../services/captain-shift-management.service.js");
-
-    const weekStart = getWeekStart(now);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-
     const assignment = await CaptainShiftModel.findOne({
-      captainId,
-      shiftId: { $exists: true },
-      weekStart: {
-        $gte: weekStart,
-        $lt: weekEnd,
-      },
-    }).lean();
+      captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
+    }).sort({ weekStart: -1, updatedAt: -1 }).lean();
 
-    if (!assignment?.shiftId) {
+    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
       return res.status(200).json({
-        success: true,
-        insideShift: false,
-        start: null,
-        end: null,
-        shift: null,
-        assignment: null,
-        message: "لا يوجد شفت فعال هذا الأسبوع.",
+        success: true, insideShift: false, canSelectNewShift: true,
+        start: null, end: null, shift: null, assignment: null,
+        message: "انتهت مدة الشفت السابق أو لم يتم اختياره. يمكنك اختيار شفت جديد.",
       });
     }
 
-    const shift = await CaptainShiftModel.findOne({
-      _id: assignment.shiftId,
-      isActive: true,
-    })
-      .select("_id name startTime endTime isActive")
-      .lean();
-
+    const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true })
+      .select("_id name startTime endTime isActive").lean();
     if (!shift) {
       return res.status(200).json({
-        success: true,
-        insideShift: false,
-        start: null,
-        end: null,
-        shift: null,
-        assignment,
-        message: "الشفت المحدد غير فعال.",
+        success: true, insideShift: false, canSelectNewShift: true,
+        start: null, end: null, shift: null, assignment: null,
+        message: "الشفت السابق غير فعال. يمكنك اختيار شفت آخر.",
       });
     }
-
-    const current =
-      now.getHours() * 60 +
-      now.getMinutes();
-
-    const [startHour, startMinute] =
-      String(shift.startTime).split(":").map(Number);
-
-    const [endHour, endMinute] =
-      String(shift.endTime).split(":").map(Number);
-
-    const start =
-      startHour * 60 + startMinute;
-
-    const end =
-      endHour * 60 + endMinute;
-
-    const insideShift =
-      start === end
-        ? true
-        : start < end
-          ? current >= start && current < end
-          : current >= start || current < end;
-
+    const current = getBaghdadMinutes(now);
+    const [startHour, startMinute] = String(shift.startTime).split(":").map(Number);
+    const [endHour, endMinute] = String(shift.endTime).split(":").map(Number);
+    const start = startHour * 60 + startMinute;
+    const end = endHour * 60 + endMinute;
+    const insideShift = start === end ? true : start < end
+      ? current >= start && current < end
+      : current >= start || current < end;
     return res.json({
-      success: true,
-      insideShift,
-      start: shift.startTime,
-      end: shift.endTime,
-      shift,
-      assignment,
+      success: true, insideShift, canSelectNewShift: false,
+      start: shift.startTime, end: shift.endTime, shift, assignment,
     });
   } catch (e) {
     return error(res, e);
   }
 }
 
-
-export async function weeklyShiftAssignment(
-  req: any,
-  res: any,
-) {
+export async function weeklyShiftAssignment(req: any, res: any) {
   try {
-    const captainId = String(
-      req.user?.sub || "",
-    );
-
-    if (!captainId) {
-      return res.status(401).json({
-        assignment: null,
-        shift: null,
-      });
-    }
-
+    const captainId = String(req.user?.sub || "");
+    if (!captainId) return res.status(401).json({ assignment: null, shift: null });
     const now = new Date();
-
-    const weekStart = new Date(now);
-    const day = weekStart.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-
-    weekStart.setDate(
-      weekStart.getDate() + diff,
-    );
-    weekStart.setHours(0, 0, 0, 0);
-
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(
-      weekEnd.getDate() + 7,
-    );
-
-    const assignment =
-      await CaptainShiftModel.findOne({
-        captainId,
-        shiftId: {
-          $exists: true,
-          $ne: null,
-        },
-        weekStart: {
-          $gte: weekStart,
-          $lt: weekEnd,
-        },
-      }).lean();
-
-    if (!assignment?.shiftId) {
-      return res.json({
-        assignment: null,
-        shift: null,
-      });
+    const assignment = await CaptainShiftModel.findOne({
+      captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
+    }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+      return res.json({ assignment: null, shift: null, canSelectNewShift: true });
     }
-
-    const shift =
-      await CaptainShiftModel.findById(
-        assignment.shiftId,
-      ).lean();
-
+    const shift = await CaptainShiftModel.findById(assignment.shiftId).lean();
     return res.json({
-      assignment: {
-        ...assignment,
-        shiftId: shift || assignment.shiftId,
-      },
+      assignment: { ...assignment, shiftId: shift || assignment.shiftId },
       shift: shift || null,
+      canSelectNewShift: false,
     });
   } catch (error: any) {
-    console.error(
-      "weeklyShiftAssignment error:",
-      error,
-    );
-
+    console.error("weeklyShiftAssignment error:", error);
     return res.status(500).json({
-      assignment: null,
-      shift: null,
-      message:
-        error?.message ||
-        "تعذر تحميل الاختيار الأسبوعي.",
+      assignment: null, shift: null,
+      message: error?.message || "تعذر تحميل الاختيار الأسبوعي.",
     });
   }
 }
