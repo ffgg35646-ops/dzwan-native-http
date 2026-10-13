@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
-import { isWeeklyShiftAssignmentCurrent } from "../services/captain-shift-management.service.js";
 
 function startOfToday() {
   const date = new Date();
@@ -26,9 +25,7 @@ async function getCurrentCaptainShift(captainId: string) {
     .sort({ weekStart: -1, updatedAt: -1 })
     .lean();
 
-  return isWeeklyShiftAssignmentCurrent(assignment, new Date())
-    ? assignment
-    : null;
+  return assignment;
 }
 
 function attendanceRow(item: any) {

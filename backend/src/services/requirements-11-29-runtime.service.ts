@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
-import { isWeeklyShiftAssignmentCurrent } from "./captain-shift-management.service.js";
+import { getBaghdadMinutes } from "./captain-shift-management.service.js";
 import { CaptainWorkAreaModel } from "../models/CaptainWorkArea.js";
 import { applyDefaultCoverage } from "./captain-coverage.service.js";
 import CaptainCashTransactionModel from "../models/CaptainCashTransaction.js";
@@ -35,8 +35,7 @@ export function isWithinShift(
   const [eh, em] = end.split(":").map(Number);
 
   const current =
-    now.getHours() * 60 +
-    now.getMinutes();
+    getBaghdadMinutes(now);
 
   const s = sh * 60 + sm;
   const e = eh * 60 + em;
@@ -150,10 +149,7 @@ export async function clockIn(
   })
     .sort({ weekStart: -1, updatedAt: -1 })
     .catch(() => null);
-  const assignment =
-    isWeeklyShiftAssignmentCurrent(candidateAssignment, now)
-      ? candidateAssignment
-      : null;
+  const assignment = candidateAssignment;
 
   const date = new Date(now);
   date.setHours(0, 0, 0, 0);

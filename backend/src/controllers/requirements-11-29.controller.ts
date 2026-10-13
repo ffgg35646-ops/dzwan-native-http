@@ -64,11 +64,11 @@ export async function shiftCheck(req: Request, res: Response) {
       captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
     }).sort({ weekStart: -1, updatedAt: -1 }).lean();
 
-    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+    if (!assignment?.shiftId) {
       return res.status(200).json({
         success: true, insideShift: false, canSelectNewShift: true,
         start: null, end: null, shift: null, assignment: null,
-        message: "انتهت مدة الشفت السابق أو لم يتم اختياره. يمكنك اختيار شفت جديد.",
+        message: "لم يتم اختيار شفت بعد.",
       });
     }
 
@@ -90,8 +90,9 @@ export async function shiftCheck(req: Request, res: Response) {
       ? current >= start && current < end
       : current >= start || current < end;
     return res.json({
-      success: true, insideShift, canSelectNewShift: false,
+      success: true, insideShift, canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
       start: shift.startTime, end: shift.endTime, shift, assignment,
+
     });
   } catch (e) {
     return error(res, e);
@@ -106,14 +107,14 @@ export async function weeklyShiftAssignment(req: any, res: any) {
     const assignment = await CaptainShiftModel.findOne({
       captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
     }).sort({ weekStart: -1, updatedAt: -1 }).lean();
-    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+    if (!assignment?.shiftId) {
       return res.json({ assignment: null, shift: null, canSelectNewShift: true });
     }
     const shift = await CaptainShiftModel.findById(assignment.shiftId).lean();
     return res.json({
       assignment: { ...assignment, shiftId: shift || assignment.shiftId },
       shift: shift || null,
-      canSelectNewShift: false,
+      canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
     });
   } catch (error: any) {
     console.error("weeklyShiftAssignment error:", error);
