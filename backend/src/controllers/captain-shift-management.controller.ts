@@ -292,7 +292,7 @@ export async function checkCurrentShift(
       });
     }
     const insideShift = isShiftRunning(String(shift.startTime), String(shift.endTime), now);
-    const selectedAt = new Date(assignment.weekStart ?? assignment.changedAt ?? assignment.createdAt).getTime();
+    const selectedAt = new Date(assignment.weekStart ?? assignment.changedAt ?? assignment.createdAt ?? NaN).getTime();
     const nextChangeAt = Number.isFinite(selectedAt) ? new Date(selectedAt + 7 * 86400000).toISOString() : null;
     const canSelectNewShift = Boolean(nextChangeAt && now.getTime() >= new Date(nextChangeAt).getTime());
     return res.json({
