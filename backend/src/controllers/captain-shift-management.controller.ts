@@ -7,7 +7,8 @@ import {
   changeCaptainWeeklyShiftOnce,
   assertCaptainInsideShift,
   isWeeklyShiftAssignmentCurrent,
-  getBaghdadMinutes,
+  getNextShiftChangeAt,
+  isShiftRunning,
 } from "../services/captain-shift-management.service.js";
 
 export async function createShift(
@@ -214,15 +215,16 @@ export async function selectWeeklyShift(
     return res.status(201).json({
       success: true,
       message:
-        "تم اختيار شفت هذا الأسبوع",
+        "تم حفظ الشفت. سيظل فعالًا حتى تغييره، ويُفتح التغيير بعد 7 أيام.",
       data: result,
     });
   } catch (error: any) {
     return res.status(400).json({
       success: false,
       message:
-        error?.message ||
-        "تعذر اختيار الشفت",
+        error?.message === "SHIFT_ALREADY_SELECTED_THIS_WEEK"
+          ? "لا يمكن تغيير الشفت قبل مرور 7 أيام كاملة من وقت آخر اختيار بتوقيت العراق."
+          : error?.message || "تعذر اختيار الشفت",
     });
   }
 }
@@ -247,15 +249,16 @@ export async function changeWeeklyShift(
     return res.json({
       success: true,
       message:
-        "تم تغيير شفت هذا الأسبوع",
+        "تم تغيير الشفت بنجاح، وتبدأ مدة قفل جديدة لمدة 7 أيام.",
       data: result,
     });
   } catch (error: any) {
     return res.status(400).json({
       success: false,
       message:
-        error?.message ||
-        "تعذر تغيير الشفت",
+        error?.message === "SHIFT_ALREADY_SELECTED_THIS_WEEK"
+          ? "لا يمكن تغيير الشفت قبل مرور 7 أيام كاملة من وقت آخر اختيار بتوقيت العراق."
+          : error?.message || "تعذر تغيير الشفت",
     });
   }
 }
@@ -291,22 +294,17 @@ export async function checkCurrentShift(
         message: "الشفت السابق غير فعال. يمكنك اختيار شفت آخر.",
       });
     }
-    const toMinutes = (value: string) => {
-      const [h, m] = String(value).split(":").map(Number);
-      return h * 60 + m;
-    };
-    const start = toMinutes(String(shift.startTime));
-    const end = toMinutes(String(shift.endTime));
-    const current = getBaghdadMinutes(now);
-    let insideShift = false;
-    if (start === end) insideShift = true;
-    else if (start < end) insideShift = current >= start && current < end;
-    else insideShift = current >= start || current < end;
+    const insideShift = isShiftRunning(
+      String(shift.startTime),
+      String(shift.endTime),
+      now,
+      (shift as any).dayOfWeek,
+    );
 
     return res.json({
       success: true, allowed: insideShift, insideShift,
       canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now), assignment, shift,
-      nextChangeAt: new Date(new Date(assignment.weekStart ?? assignment.changedAt ?? assignment.createdAt ?? assignment.updatedAt).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      nextChangeAt: getNextShiftChangeAt(assignment)?.toISOString() ?? null,
       message: insideShift ? "أنت داخل وقت الشفت." : "تم اختيار الشفت، لكنك خارج وقت الشفت حاليًا.",
     });
   } catch (error: any) {
