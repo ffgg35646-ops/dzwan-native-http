@@ -5,7 +5,8 @@ import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
 import {
   isWeeklyShiftAssignmentCurrent,
-  getBaghdadMinutes,
+  getNextShiftChangeAt,
+  isShiftRunning,
 } from "../services/captain-shift-management.service.js";
 import { OrderModel } from "../models/Order.js";
 import { EstablishmentModel } from "../models/Establishment.js";
@@ -81,17 +82,16 @@ export async function shiftCheck(req: Request, res: Response) {
         message: "الشفت السابق غير فعال. يمكنك اختيار شفت آخر.",
       });
     }
-    const current = getBaghdadMinutes(now);
-    const [startHour, startMinute] = String(shift.startTime).split(":").map(Number);
-    const [endHour, endMinute] = String(shift.endTime).split(":").map(Number);
-    const start = startHour * 60 + startMinute;
-    const end = endHour * 60 + endMinute;
-    const insideShift = start === end ? true : start < end
-      ? current >= start && current < end
-      : current >= start || current < end;
+    const insideShift = isShiftRunning(
+      String(shift.startTime),
+      String(shift.endTime),
+      now,
+      (shift as any).dayOfWeek,
+    );
     return res.json({
       success: true, insideShift, canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
       start: shift.startTime, end: shift.endTime, shift, assignment,
+      nextChangeAt: getNextShiftChangeAt(assignment)?.toISOString() ?? null,
 
     });
   } catch (e) {
@@ -115,6 +115,7 @@ export async function weeklyShiftAssignment(req: any, res: any) {
       assignment: { ...assignment, shiftId: shift || assignment.shiftId },
       shift: shift || null,
       canSelectNewShift: !isWeeklyShiftAssignmentCurrent(assignment, now),
+      nextChangeAt: getNextShiftChangeAt(assignment)?.toISOString() ?? null,
     });
   } catch (error: any) {
     console.error("weeklyShiftAssignment error:", error);
