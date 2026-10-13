@@ -276,94 +276,9 @@ export async function assignCaptainWeeklyShift(
   });
 }
 
-export async function changeCaptainWeeklyShiftOnce(
-  captainId: string,
-  newShiftId: string,
-  weekStart?: Date
-) {
-  const captainObjectId = objectId(captainId);
-  const shiftObjectId = objectId(newShiftId);
-
-  const now = new Date(weekStart || new Date());
-  now.setMilliseconds(0);
-
-  const windowStart = new Date(
-    now.getTime() -
-      7 * 24 * 60 * 60 * 1000,
-  );
-
-  const assignment =
-    await CaptainShiftModel.findOne({
-      captainId: captainObjectId,
-      shiftId: { $exists: true, $ne: null },
-      weekStart: {
-        $gt: windowStart,
-        $lte: now,
-      },
-    }).sort({ weekStart: -1 });
-
-  if (!assignment) {
-    throw new Error(
-      "NO_WEEKLY_SHIFT_SELECTED"
-    );
-  }
-
-  if (
-    Number(
-      (assignment as any).changeCount || 0
-    ) >= 1
-  ) {
-    throw new Error(
-      "WEEKLY_SHIFT_CHANGE_LIMIT_REACHED"
-    );
-  }
-
-  const shift =
-    await CaptainShiftModel.findOne({
-      _id: shiftObjectId,
-      isActive: true,
-      captainId: { $in: [null] },
-      shiftId: { $in: [null] },
-      weekStart: { $in: [null] },
-    });
-
-  if (!shift) {
-    throw new Error(
-      "SHIFT_NOT_FOUND_OR_INACTIVE"
-    );
-  }
-
-  const updatedAssignment =
-    await CaptainShiftModel.findOneAndUpdate(
-      {
-        _id: assignment._id,
-        captainId: captainObjectId,
-        weekStart: {
-          $gt: windowStart,
-          $lte: now,
-        },
-        changeCount: { $lt: 1 },
-      },
-      {
-        $set: {
-          shiftId: shiftObjectId,
-          changedAt: new Date(),
-          isOpen: true,
-        },
-        $inc: {
-          changeCount: 1,
-        },
-      },
-      { new: true },
-    );
-
-  if (!updatedAssignment) {
-    throw new Error(
-      "WEEKLY_SHIFT_CHANGE_LIMIT_REACHED"
-    );
-  }
-
-  return updatedAssignment;
+// Both shift endpoints enforce the same seven-day lock. The chosen shift never expires.
+export async function changeCaptainWeeklyShiftOnce(captainId: string, newShiftId: string) {
+  return assignCaptainWeeklyShift(captainId, newShiftId);
 }
 
 export function isShiftRunning(
@@ -415,7 +330,7 @@ export async function assertCaptainInsideShift(
     isActive: true,
   }).sort({ weekStart: -1, updatedAt: -1 });
 
-  if (!assignment || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+  if (!assignment) {
     throw new Error("CAPTAIN_HAS_NO_WEEKLY_SHIFT");
   }
   const shift = await CaptainShiftModel.findById((assignment as any).shiftId);
