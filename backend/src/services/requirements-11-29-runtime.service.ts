@@ -172,11 +172,7 @@ export async function clockIn(
     { upsert: true, new: true }
   );
 
-  await UserModel.updateOne(
-    { _id: captainObjectId, role: "captain" },
-    { $set: { isOnline: true } }
-  );
-
+  // Attendance is reporting only and must not toggle order availability.
   return attendance;
 }
 
