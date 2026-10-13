@@ -6,8 +6,8 @@ import {
   assignCaptainWeeklyShift,
   changeCaptainWeeklyShiftOnce,
   assertCaptainInsideShift,
-  isWeeklyShiftAssignmentCurrent,
   getBaghdadMinutes,
+  isShiftRunning,
 } from "../services/captain-shift-management.service.js";
 
 export async function createShift(
@@ -276,11 +276,11 @@ export async function checkCurrentShift(
       isActive: true,
     }).sort({ weekStart: -1, updatedAt: -1 }).lean();
 
-    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+    if (!assignment?.shiftId) {
       return res.json({
         success: true, allowed: false, insideShift: false,
         canSelectNewShift: true, assignment: null, shift: null,
-        message: "انتهت مدة الشفت السابق أو لم يتم اختياره. يمكنك اختيار شفت جديد.",
+        message: "لم يتم اختيار شفت بعد. يمكنك اختيار شفت.",
       });
     }
     const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true }).lean();
@@ -291,21 +291,13 @@ export async function checkCurrentShift(
         message: "الشفت السابق غير فعال. يمكنك اختيار شفت آخر.",
       });
     }
-    const toMinutes = (value: string) => {
-      const [h, m] = String(value).split(":").map(Number);
-      return h * 60 + m;
-    };
-    const start = toMinutes(String(shift.startTime));
-    const end = toMinutes(String(shift.endTime));
-    const current = getBaghdadMinutes(now);
-    let insideShift = false;
-    if (start === end) insideShift = true;
-    else if (start < end) insideShift = current >= start && current < end;
-    else insideShift = current >= start || current < end;
-
+    const insideShift = isShiftRunning(String(shift.startTime), String(shift.endTime), now);
+    const selectedAt = new Date(assignment.weekStart ?? assignment.changedAt ?? assignment.createdAt).getTime();
+    const nextChangeAt = Number.isFinite(selectedAt) ? new Date(selectedAt + 7 * 86400000).toISOString() : null;
+    const canSelectNewShift = Boolean(nextChangeAt && now.getTime() >= new Date(nextChangeAt).getTime());
     return res.json({
       success: true, allowed: insideShift, insideShift,
-      canSelectNewShift: false, assignment, shift,
+      canSelectNewShift, nextChangeAt, assignment, shift,
       message: insideShift ? "أنت داخل وقت الشفت." : "تم اختيار الشفت، لكنك خارج وقت الشفت حاليًا.",
     });
   } catch (error: any) {
