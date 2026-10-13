@@ -75,7 +75,9 @@ async function isCaptainInsideSelectedWeeklyShift(
       isActive: true,
     })
       .sort({
+        changedAt: -1,
         updatedAt: -1,
+        weekStart: -1,
       })
       .lean();
 
@@ -90,7 +92,7 @@ async function isCaptainInsideSelectedWeeklyShift(
       isActive: true,
     })
       .select(
-        "startTime endTime isOpen",
+        "startTime endTime isOpen dayOfWeek",
       )
       .lean();
 
@@ -98,7 +100,7 @@ async function isCaptainInsideSelectedWeeklyShift(
     return false;
   }
 
-  return isShiftRunning(String(shift.startTime), String(shift.endTime), now);
+  return isShiftRunning(String(shift.startTime), String(shift.endTime), now, (shift as any).dayOfWeek);
 }
 
 async function getCaptainScopeData(captainId: string) {
@@ -546,8 +548,7 @@ export async function getCaptainOrderBoard(
           }
         : null;
 
-    // لا نستقبل طلبات جديدة إلا بعد اختيار شفت هذا الأسبوع
-    // وداخل وقت الشفت المختار.
+    // الطلبات الجديدة تظهر فقط عند وجود شفت محفوظ وداخل مواعيده بتوقيت بغداد.
     const insideSelectedShift =
       await isCaptainInsideSelectedWeeklyShift(
         captainId,
