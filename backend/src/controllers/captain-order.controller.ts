@@ -698,15 +698,6 @@ export async function claimCaptainOrder(
       return;
     }
 
-    if (captain.isOnline === false) {
-      res.status(403).json({
-        success: false,
-        message:
-          "يجب تشغيل حالة الاستعداد أولًا لحجز الطلب.",
-      });
-      return;
-    }
-
     // نفس فحص الشفت المستخدم لعرض الطلبات:
     // الشفت المختار + الوقت داخل بداية/نهاية الشفت.
     const canWork =
