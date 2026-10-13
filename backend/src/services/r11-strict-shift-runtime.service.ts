@@ -59,126 +59,15 @@ function isInsideShift(
   );
 }
 
-function getCurrentDayIndex(date: Date): number {
-  return date.getDay();
-}
+import { assertCaptainInsideShift as assertSelectedCaptainShift } from "./captain-shift-management.service.js";
 
-export async function checkStrictShift(
-  captainId: string,
-  date = new Date(),
-): Promise<StrictShiftResult> {
-  const dayIndex = getCurrentDayIndex(date);
-
-  const shifts = await CaptainShiftModel.find({
-    captainId,
-    isActive: true,
-  }).lean();
-
-  if (!shifts.length) {
-    return {
-      allowed: false,
-      reason: "NO_SHIFT",
-    };
+export async function checkStrictShift(captainId: string, date = new Date()): Promise<StrictShiftResult> {
+  try {
+    const { shift } = await assertSelectedCaptainShift(captainId, date);
+    return { allowed: true, reason: "IN_SHIFT", shiftId: String(shift._id) };
+  } catch (error: any) {
+    return { allowed: false, reason: error?.message === "CAPTAIN_HAS_NO_WEEKLY_SHIFT" ? "NO_SHIFT" : "OUTSIDE_SHIFT" };
   }
-
-  const nowMinutes =
-    date.getHours() * 60 +
-    date.getMinutes();
-
-  for (const assignment of shifts) {
-    // CaptainShift يحتوي على نوعين من السجلات:
-    // 1) تعريف الشفت نفسه.
-    // 2) تعيين الشفت للكابتن ويحتوي على shiftId.
-    // عند وجود shiftId نقرأ تعريف الشفت الحقيقي.
-    const shift =
-      (assignment as any).shiftId
-        ? await CaptainShiftModel.findById(
-            (assignment as any).shiftId,
-          ).lean()
-        : assignment;
-
-    if (!shift) {
-      continue;
-    }
-
-    // الشفت المفتوح لا يعتمد على اليوم أو الوقت.
-    if ((shift as any).isOpen === true) {
-      return {
-        allowed: true,
-        reason: "IN_SHIFT",
-        shiftId: String(shift._id),
-      };
-    }
-
-    const rawShiftDay =
-      (shift as any).dayOfWeek ??
-      (shift as any).day ??
-      null;
-
-    if (
-      rawShiftDay !== null &&
-      rawShiftDay !== undefined &&
-      rawShiftDay !== ""
-    ) {
-      const numericShiftDay = Number(rawShiftDay);
-
-      if (Number.isInteger(numericShiftDay)) {
-        if (numericShiftDay !== dayIndex) {
-          continue;
-        }
-      } else {
-        const names = [
-          "sunday",
-          "monday",
-          "tuesday",
-          "wednesday",
-          "thursday",
-          "friday",
-          "saturday",
-        ];
-
-        if (
-          String(rawShiftDay).toLowerCase() !==
-          names[dayIndex]
-        ) {
-          continue;
-        }
-      }
-    }
-
-    const start =
-      String(
-        (shift as any).startTime ??
-        (shift as any).start ??
-        "",
-      );
-
-    const end =
-      String(
-        (shift as any).endTime ??
-        (shift as any).end ??
-        "",
-      );
-
-    if (
-      isInsideShift(
-        nowMinutes,
-        start,
-        end,
-      )
-    ) {
-      return {
-        allowed: true,
-        reason: "IN_SHIFT",
-        shiftId: String(shift._id),
-      };
-    }
-  }
-
-  return {
-    allowed: false,
-    reason: "OUTSIDE_SHIFT",
-  };
 }
 
 export async function assertCaptainInsideShift(
