@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import CaptainAttendanceModel from "../models/CaptainAttendance.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
+import { isWeeklyShiftAssignmentCurrent } from "./captain-shift-management.service.js";
 import { CaptainWorkAreaModel } from "../models/CaptainWorkArea.js";
 import { applyDefaultCoverage } from "./captain-coverage.service.js";
 import CaptainCashTransactionModel from "../models/CaptainCashTransaction.js";
@@ -142,13 +143,17 @@ export async function clockIn(
 
   // Attendance is independent of shift selection and shift hours.
   // Attach a shift only as optional reporting metadata when available.
-  const assignment = await CaptainShiftModel.findOne({
+  const candidateAssignment = await CaptainShiftModel.findOne({
     captainId: captainObjectId,
     shiftId: { $exists: true, $ne: null },
     isActive: true,
   })
-    .sort({ updatedAt: -1 })
+    .sort({ weekStart: -1, updatedAt: -1 })
     .catch(() => null);
+  const assignment =
+    isWeeklyShiftAssignmentCurrent(candidateAssignment, now)
+      ? candidateAssignment
+      : null;
 
   const date = new Date(now);
   date.setHours(0, 0, 0, 0);
