@@ -314,27 +314,30 @@ export function isShiftRunning(
   const end = toMinutes(endTime);
   if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
 
+  const current = getBaghdadMinutes(now);
+  const dayName = new Intl.DateTimeFormat("en-US", {
+    timeZone: BAGHDAD_TIME_ZONE,
+    weekday: "long",
+  }).format(now).toLowerCase();
+  const weekdayIndex: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+    thursday: 4, friday: 5, saturday: 6,
+  };
+  const currentDay = weekdayIndex[dayName];
+
   if (dayOfWeek !== null && dayOfWeek !== undefined && String(dayOfWeek).trim() !== "") {
-    const weekdayName = new Intl.DateTimeFormat("en-US", {
-      timeZone: BAGHDAD_TIME_ZONE,
-      weekday: "long",
-    }).format(now).toLowerCase();
-    const weekdayIndex: Record<string, number> = {
-      sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
-      thursday: 4, friday: 5, saturday: 6,
-    };
     const expectedDay = Number.isInteger(Number(dayOfWeek))
       ? Number(dayOfWeek)
       : weekdayIndex[String(dayOfWeek).toLowerCase()];
-    if (
-      !Number.isInteger(expectedDay) ||
-      expectedDay < 0 ||
-      expectedDay > 6 ||
-      weekdayIndex[weekdayName] !== expectedDay
-    ) return false;
+    if (!Number.isInteger(expectedDay) || expectedDay < 0 || expectedDay > 6) return false;
+
+    // After midnight, an overnight shift belongs to the day it started.
+    const correctDay = start > end && current < end
+      ? (expectedDay + 1) % 7 === currentDay
+      : expectedDay === currentDay;
+    if (!correctDay) return false;
   }
 
-  const current = getBaghdadMinutes(now);
   if (start === end) return true;
   if (start < end) return current >= start && current < end;
   return current >= start || current < end;
@@ -358,7 +361,7 @@ export async function assertCaptainInsideShift(
   if (!shift || !(shift as any).isActive) {
     throw new Error("CAPTAIN_SHIFT_INACTIVE");
   }
-  if (!isShiftRunning(String((shift as any).startTime), String((shift as any).endTime), now)) {
+  if (!isShiftRunning(String((shift as any).startTime), String((shift as any).endTime), now, (shift as any).dayOfWeek)) {
     throw new Error("CAPTAIN_OUTSIDE_SHIFT");
   }
   return { assignment, shift };
