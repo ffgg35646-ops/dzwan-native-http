@@ -138,82 +138,43 @@ export async function clockIn(
   captainId: string
 ) {
   const captainObjectId = new mongoose.Types.ObjectId(captainId);
-
   const now = new Date();
 
-  // تعيين الشفت الأسبوعي قد يُحفظ بوقت اختيار الكابتن
-  // وليس عند الإثنين 00:00، لذلك نعتمد على آخر 7 أيام.
-  // الشفت المختار يظل قائمًا حتى يختار الكابتن شفتًا آخر.
+  // Attendance is independent of shift selection and shift hours.
+  // Attach a shift only as optional reporting metadata when available.
   const assignment = await CaptainShiftModel.findOne({
     captainId: captainObjectId,
-    shiftId: {
-      $exists: true,
-      $ne: null,
-    },
+    shiftId: { $exists: true, $ne: null },
     isActive: true,
-  }).sort({ updatedAt: -1 });
-
-  if (!assignment) {
-    throw new Error("CAPTAIN_HAS_NO_WEEKLY_SHIFT");
-  }
-
-  // نجيب الشفت الأساسي نفسه
-  const shift = await CaptainShiftModel.findOne({
-    _id: assignment.shiftId,
-    isActive: true,
-  });
-
-  if (!shift) {
-    throw new Error("CAPTAIN_SHIFT_INACTIVE");
-  }
-
-  // ممنوع تسجيل الحضور خارج وقت الشفت
-  assertWithinShift(
-    String(shift.startTime),
-    String(shift.endTime)
-  );
+  })
+    .sort({ updatedAt: -1 })
+    .catch(() => null);
 
   const date = new Date(now);
   date.setHours(0, 0, 0, 0);
-
-  const existing =
-    await CaptainAttendanceModel.findOne({
-      captainId,
-      date,
-    });
-
+  const existing = await CaptainAttendanceModel.findOne({
+    captainId: captainObjectId,
+    date,
+  });
   if (existing?.clockInAt) {
     throw new Error("ALREADY_CLOCKED_IN");
   }
 
   const attendance = await CaptainAttendanceModel.findOneAndUpdate(
-    {
-      captainId,
-      date,
-    },
+    { captainId: captainObjectId, date },
     {
       $set: {
-        shiftId: assignment.shiftId,
+        shiftId: assignment?.shiftId ?? null,
         clockInAt: now,
         status: "present",
       },
     },
-    {
-      upsert: true,
-      new: true,
-    }
+    { upsert: true, new: true }
   );
 
   await UserModel.updateOne(
-    {
-      _id: captainId,
-      role: "captain",
-    },
-    {
-      $set: {
-        isOnline: true,
-      },
-    }
+    { _id: captainObjectId, role: "captain" },
+    { $set: { isOnline: true } }
   );
 
   return attendance;
