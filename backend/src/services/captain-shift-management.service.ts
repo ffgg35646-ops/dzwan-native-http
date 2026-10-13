@@ -250,7 +250,7 @@ export async function assignCaptainWeeklyShift(
     await CaptainShiftModel.findOne({
       captainId: captainObjectId,
       shiftId: { $exists: true, $ne: null },
-    }).sort({ weekStart: -1 });
+    }).sort({ weekStart: -1, updatedAt: -1 });
 
   if (previousAssignment) {
     if (isWeeklyShiftAssignmentCurrent(previousAssignment, start)) {
