@@ -5,7 +5,6 @@ import { DispatchSettingsModel } from "../models/DispatchSettings.js";
 import { CaptainShiftModel } from "../models/CaptainShift.js";
 import {
   getBaghdadMinutes,
-  isShiftRunning,
 } from "../services/captain-shift-management.service.js";
 import { OrderModel } from "../models/Order.js";
 import { EstablishmentModel } from "../models/Establishment.js";
@@ -106,14 +105,14 @@ export async function weeklyShiftAssignment(req: any, res: any) {
     const assignment = await CaptainShiftModel.findOne({
       captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
     }).sort({ weekStart: -1, updatedAt: -1 }).lean();
-    if (!assignment?.shiftId || !isWeeklyShiftAssignmentCurrent(assignment, now)) {
+    if (!assignment?.shiftId) {
       return res.json({ assignment: null, shift: null, canSelectNewShift: true });
     }
     const shift = await CaptainShiftModel.findById(assignment.shiftId).lean();
     return res.json({
       assignment: { ...assignment, shiftId: shift || assignment.shiftId },
       shift: shift || null,
-      canSelectNewShift: false,
+      canSelectNewShift: Boolean(assignment.weekStart && now.getTime() >= new Date(assignment.weekStart).getTime() + 7 * 86400000),
     });
   } catch (error: any) {
     console.error("weeklyShiftAssignment error:", error);
