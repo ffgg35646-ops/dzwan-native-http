@@ -59,7 +59,7 @@ function distanceKm(
 async function captainHasActiveShift(captainId: Types.ObjectId): Promise<boolean> {
   const assignment = await CaptainShiftModel.findOne({
     captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
-  }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+  }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 }).lean();
   if (!assignment?.shiftId) return false;
   const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true }).lean();
   if (!shift) return false;
