@@ -16,7 +16,7 @@ export type StrictShiftResult = {
 export async function checkStrictShift(captainId: string, date = new Date()): Promise<StrictShiftResult> {
   const assignment = await CaptainShiftModel.findOne({
     captainId, shiftId: { $exists: true, $ne: null }, isActive: true,
-  }).sort({ weekStart: -1, updatedAt: -1 }).lean();
+  }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 }).lean();
   if (!assignment?.shiftId) return { allowed: false, reason: "NO_SHIFT" };
   const shift = await CaptainShiftModel.findOne({ _id: assignment.shiftId, isActive: true }).lean();
   if (!shift) return { allowed: false, reason: "NO_SHIFT" };
