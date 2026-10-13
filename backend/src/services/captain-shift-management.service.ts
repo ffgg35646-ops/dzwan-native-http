@@ -366,7 +366,7 @@ export async function assertCaptainInsideShift(
     captainId: captainObjectId,
     shiftId: { $exists: true, $ne: null },
     isActive: true,
-  }).sort({ weekStart: -1, updatedAt: -1 });
+  }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 });
 
   if (!assignment) {
     throw new Error("CAPTAIN_HAS_NO_WEEKLY_SHIFT");
