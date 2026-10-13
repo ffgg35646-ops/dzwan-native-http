@@ -282,7 +282,7 @@ export async function assignCaptainWeeklyShift(
     await CaptainShiftModel.findOne({
       captainId: captainObjectId,
       shiftId: { $exists: true, $ne: null },
-    }).sort({ weekStart: -1, updatedAt: -1 });
+    }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 });
 
   if (previousAssignment) {
     if (isWeeklyShiftAssignmentCurrent(previousAssignment, start)) {
@@ -320,7 +320,7 @@ export function isShiftRunning(
   dayOfWeek?: number | string | null,
 ) {
   const toMinutes = (value: string) => {
-    if (!/^\\d{1,2}:\\d{2}$/.test(String(value))) return NaN;
+    if (!/^\d{1,2}:\d{2}$/.test(String(value))) return NaN;
     const [h, m] = String(value).split(":").map(Number);
     return h >= 0 && h <= 23 && m >= 0 && m <= 59 ? h * 60 + m : NaN;
   };
