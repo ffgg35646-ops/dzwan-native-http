@@ -59,13 +59,27 @@ function getBaghdadParts(date = new Date()) {
   return value;
 }
 
+export function getBaghdadDayBounds(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BAGHDAD_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value: Record<string, number> = {};
+  for (const part of parts) {
+    if (part.type === "year" || part.type === "month" || part.type === "day") {
+      value[part.type] = Number(part.value);
+    }
+  }
+  // Baghdad's civil day currently begins at 21:00 UTC on the preceding date.
+  const start = new Date(Date.UTC(value.year, value.month - 1, value.day, -3, 0, 0, 0));
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
 export function getBaghdadMinutes(date = new Date()) {
   const parts = getBaghdadParts(date);
-
-  return (
-    Number(parts.hour || 0) * 60 +
-    Number(parts.minute || 0)
-  );
+  return Number(parts.hour || 0) * 60 + Number(parts.minute || 0);
 }
 
 export function getWeekStart(date = new Date()) {
@@ -107,19 +121,38 @@ export function getWeekStart(date = new Date()) {
   );
 }
 
+function getShiftSelectionTimestamp(assignment: any): number {
+  const explicitChange = new Date(assignment?.changedAt ?? NaN).getTime();
+  if (Number.isFinite(explicitChange)) return explicitChange;
+
+  // Legacy assignments may have only weekStart/createdAt/updatedAt.
+  // Use the most recent valid timestamp so a legacy calendar-week value
+  // does not keep the lock closed longer than intended.
+  const fallbacks = [
+    assignment?.weekStart,
+    assignment?.createdAt,
+    assignment?.updatedAt,
+  ]
+    .map((value) => new Date(value ?? NaN).getTime())
+    .filter((value) => Number.isFinite(value));
+  return fallbacks.length ? Math.max(...fallbacks) : NaN;
+}
+
+export function getNextShiftChangeAt(assignment: any): Date | null {
+  if (!assignment) return null;
+  const selectedAt = getShiftSelectionTimestamp(assignment);
+  return Number.isFinite(selectedAt)
+    ? new Date(selectedAt + 7 * 24 * 60 * 60 * 1000)
+    : null;
+}
+
+// This helper represents the change-lock only. It does not expire the selected shift.
 export function isWeeklyShiftAssignmentCurrent(
   assignment: any,
   now = new Date(),
 ) {
-  if (!assignment) return false;
-  const selectedAtValue =
-    assignment.weekStart ??
-    assignment.changedAt ??
-    assignment.createdAt ??
-    assignment.updatedAt;
-  const selectedAt = new Date(selectedAtValue ?? NaN).getTime();
-  return Number.isFinite(selectedAt) &&
-    now.getTime() < selectedAt + 7 * 24 * 60 * 60 * 1000;
+  const unlockAt = getNextShiftChangeAt(assignment);
+  return Boolean(unlockAt && now.getTime() < unlockAt.getTime());
 }
 
 export async function createCaptainShift(input: {
@@ -250,7 +283,7 @@ export async function assignCaptainWeeklyShift(
     await CaptainShiftModel.findOne({
       captainId: captainObjectId,
       shiftId: { $exists: true, $ne: null },
-    }).sort({ weekStart: -1, updatedAt: -1 });
+    }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 });
 
   if (previousAssignment) {
     if (isWeeklyShiftAssignmentCurrent(previousAssignment, start)) {
@@ -284,39 +317,45 @@ export async function changeCaptainWeeklyShiftOnce(captainId: string, newShiftId
 export function isShiftRunning(
   startTime: string,
   endTime: string,
-  now = new Date()
+  now = new Date(),
+  dayOfWeek?: number | string | null,
 ) {
   const toMinutes = (value: string) => {
-    const [h, m] =
-      value.split(":").map(Number);
-
-    return h * 60 + m;
+    if (!/^\d{1,2}:\d{2}$/.test(String(value))) return NaN;
+    const [h, m] = String(value).split(":").map(Number);
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59 ? h * 60 + m : NaN;
   };
+  const start = toMinutes(startTime);
+  const end = toMinutes(endTime);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
 
-  const start =
-    toMinutes(startTime);
+  const current = getBaghdadMinutes(now);
+  const dayName = new Intl.DateTimeFormat("en-US", {
+    timeZone: BAGHDAD_TIME_ZONE,
+    weekday: "long",
+  }).format(now).toLowerCase();
+  const weekdayIndex: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+    thursday: 4, friday: 5, saturday: 6,
+  };
+  const currentDay = weekdayIndex[dayName];
 
-  const end =
-    toMinutes(endTime);
+  if (dayOfWeek !== null && dayOfWeek !== undefined && String(dayOfWeek).trim() !== "") {
+    const expectedDay = Number.isInteger(Number(dayOfWeek))
+      ? Number(dayOfWeek)
+      : weekdayIndex[String(dayOfWeek).toLowerCase()];
+    if (!Number.isInteger(expectedDay) || expectedDay < 0 || expectedDay > 6) return false;
 
-  const current =
-    getBaghdadMinutes(now);
-
-  if (start === end) {
-    return true;
+    // After midnight, an overnight shift belongs to the day it started.
+    const correctDay = start > end && current < end
+      ? (expectedDay + 1) % 7 === currentDay
+      : expectedDay === currentDay;
+    if (!correctDay) return false;
   }
 
-  if (start < end) {
-    return (
-      current >= start &&
-      current < end
-    );
-  }
-
-  return (
-    current >= start ||
-    current < end
-  );
+  if (start === end) return true;
+  if (start < end) return current >= start && current < end;
+  return current >= start || current < end;
 }
 
 export async function assertCaptainInsideShift(
@@ -328,7 +367,7 @@ export async function assertCaptainInsideShift(
     captainId: captainObjectId,
     shiftId: { $exists: true, $ne: null },
     isActive: true,
-  }).sort({ weekStart: -1, updatedAt: -1 });
+  }).sort({ changedAt: -1, updatedAt: -1, weekStart: -1 });
 
   if (!assignment) {
     throw new Error("CAPTAIN_HAS_NO_WEEKLY_SHIFT");
@@ -337,7 +376,7 @@ export async function assertCaptainInsideShift(
   if (!shift || !(shift as any).isActive) {
     throw new Error("CAPTAIN_SHIFT_INACTIVE");
   }
-  if (!isShiftRunning(String((shift as any).startTime), String((shift as any).endTime), now)) {
+  if (!isShiftRunning(String((shift as any).startTime), String((shift as any).endTime), now, (shift as any).dayOfWeek)) {
     throw new Error("CAPTAIN_OUTSIDE_SHIFT");
   }
   return { assignment, shift };
