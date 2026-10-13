@@ -232,21 +232,14 @@ export async function autoCloseExpiredCaptainAttendance(
     const endMinutes =
       toMinutes(String(shift.endTime));
 
-    const endAt = new Date(attendance.date);
-    endAt.setHours(0, 0, 0, 0);
-
+    const dayStart = getBaghdadDayBounds(new Date(attendance.date)).start;
     const endDayOffset =
       endMinutes <= startMinutes ? 1 : 0;
 
-    endAt.setDate(
-      endAt.getDate() + endDayOffset,
-    );
-
-    endAt.setHours(
-      Math.floor(endMinutes / 60),
-      endMinutes % 60,
-      0,
-      0,
+    // Calculate shift end from Baghdad midnight instead of the server's local timezone.
+    const endAt = new Date(
+      dayStart.getTime() +
+      (endDayOffset * 24 * 60 + endMinutes) * 60 * 1000,
     );
 
     if (now.getTime() < endAt.getTime()) {
